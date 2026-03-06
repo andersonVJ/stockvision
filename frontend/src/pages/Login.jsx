@@ -18,9 +18,10 @@ export default function Login() {
       localStorage.setItem("token", response.access);
       localStorage.setItem("user", JSON.stringify(response.user));
 
-      navigate("/welcome");
+      navigate("/inicio");
 
     } catch (error) {
+      console.error("Login failed:", error);
       alert("Credenciales incorrectas");
     }
   };

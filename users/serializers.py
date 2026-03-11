@@ -1,14 +1,23 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
+    assigned_by_name = serializers.SerializerMethodField()
+    position_display = serializers.CharField(source='get_position_display', read_only=True)
+
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role', 'company')
-        read_only_fields = ('id',)
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role', 'company', 'cedula', 'position', 'position_display', 'assigned_by', 'assigned_by_name')
+        read_only_fields = ('id', 'assigned_by_name')
+
+    def get_assigned_by_name(self, obj):
+        if obj.assigned_by:
+            return f"{obj.assigned_by.first_name} {obj.assigned_by.last_name}".strip() or obj.assigned_by.username
+        return None
 
 class RegisterUserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
@@ -16,7 +25,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'password', 'password_confirm', 'first_name', 'last_name', 'role', 'company')
+        fields = ('username', 'email', 'password', 'password_confirm', 'first_name', 'last_name', 'role', 'company', 'cedula')
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
@@ -35,6 +44,28 @@ class RegisterUserSerializer(serializers.ModelSerializer):
             first_name=validated_data.get('first_name', ''),
             last_name=validated_data.get('last_name', ''),
             role=validated_data.get('role', User.EMPLEADO),
-            company=validated_data.get('company', None)
+            company=validated_data.get('company', None),
+            cedula=validated_data.get('cedula', None)
         )
         return user
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, validators=[validate_password])
+    new_password_confirm = serializers.CharField(required=True)
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise serializers.ValidationError({"new_password": "Las nuevas contraseñas no coinciden."})
+        return attrs
+
+class AssignPositionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('position',)
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data['user'] = UserSerializer(self.user).data
+        return data

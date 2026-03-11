@@ -7,7 +7,9 @@ import {
     ShoppingCart,
     Settings,
     LogOut,
-    BarChart2
+    BarChart2,
+    User,
+    Users
 } from "lucide-react";
 
 import Logo from "./Logo";
@@ -37,6 +39,7 @@ export default function Sidebar() {
         { name: "Inventario", path: "/inventory", icon: <Package className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO"] },
         { name: "Predicción IA", path: "/predictions", icon: <TrendingUp className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO"] },
         { name: "Ventas", path: "/sales", icon: <ShoppingCart className="w-[18px] h-[18px]" />, roles: ["ADMIN"] },
+        { name: "Empleados", path: "/empleados", icon: <Users className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO"] },
     ];
 
     // Filter items based on user role
@@ -88,6 +91,13 @@ export default function Sidebar() {
 
             {/* Bottom Config Links */}
             <div className="p-4 border-t border-slate-100 space-y-1">
+                <button
+                    onClick={() => navigate("/perfil")}
+                    className="w-full flex items-center px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-colors group"
+                >
+                    <User className="w-[18px] h-[18px] mr-3 text-slate-400 group-hover:text-slate-600" />
+                    Mi Perfil
+                </button>
                 <button
                     onClick={() => navigate("/config")}
                     className="w-full flex items-center px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-colors group"

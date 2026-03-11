@@ -20,7 +20,8 @@ export default function Login() {
 
       const response = await login(username, password);
 
-      localStorage.setItem("token", response.access);
+      localStorage.setItem("token", response.access); // kept for any old reference
+      localStorage.setItem("tokens", JSON.stringify(response)); // needed for frontend fetch calls
       localStorage.setItem("user", JSON.stringify(response.user));
 
       navigate("/inicio");

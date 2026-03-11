@@ -49,14 +49,25 @@ export default function Inicio() {
             <h2 className="text-2xl font-bold text-slate-800">
               {user?.first_name ? `${user.first_name} ${user.last_name || ''}` : user?.username || "Usuario"}
             </h2>
-            <span className="inline-block mt-3 px-4 py-1.5 text-sm font-semibold bg-blue-100 text-blue-700 rounded-full border border-blue-200">
-              {getRoleDisplayName(role)}
-            </span>
+            <div className="flex justify-center gap-3 mt-3">
+              <span className="inline-block px-4 py-1.5 text-sm font-semibold bg-blue-100 text-blue-700 rounded-full border border-blue-200">
+                {getRoleDisplayName(role)}
+              </span>
+              {user?.position_display && (
+                <span className="inline-block px-4 py-1.5 text-sm font-semibold bg-indigo-100 text-indigo-700 rounded-full border border-indigo-200">
+                  Cargo: {user.position_display}
+                </span>
+              )}
+            </div>
+            {user?.assigned_by_name && (
+              <p className="text-sm text-slate-500 mt-3">
+                Asignado por: <span className="font-medium">{user.assigned_by_name}</span>
+              </p>
+            )}
           </div>
 
-          {/* Hint for future profile editing feature */}
           <p className="text-sm text-slate-400 mt-8">
-            Próximamente podrás actualizar tus datos personales desde este panel.
+            Puedes ver más detalles y cambiar tu contraseña en tu Perfil.
           </p>
 
         </div>

@@ -5,6 +5,8 @@ import Dashboard from "./pages/Dashboard";
 import Perfil from "./pages/Perfil";
 import GestionEmpleados from "./pages/GestionEmpleados";
 import AutoLogout from "./components/AutoLogout";
+import ForgotPassword from "./pages/ForgotPassword"
+import ResetPassword from "./pages/ResetPassword"
 
 function App() {
   return (
@@ -12,6 +14,8 @@ function App() {
       <AutoLogout />
       <Routes>
         <Route path="/" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/inicio" element={<Inicio />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/perfil" element={<Perfil />} />

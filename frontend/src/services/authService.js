@@ -1,11 +1,24 @@
-import api from "../api/api";
+import axios from "axios";
 
 export const login = async (username, password) => {
 
-  const response = await api.post("/users/login/", {
-    username,
-    password
-  });
+  try {
 
-  return response.data;
+    const response = await axios.post(
+      "http://127.0.0.1:8000/api/token/",
+      {
+        username,
+        password
+      }
+    );
+
+    return response.data;
+
+  } catch (error) {
+
+    // reenviamos el error original de axios
+    throw error;
+
+  }
+
 };

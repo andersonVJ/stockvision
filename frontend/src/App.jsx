@@ -5,8 +5,10 @@ import Dashboard from "./pages/Dashboard";
 import Perfil from "./pages/Perfil";
 import GestionEmpleados from "./pages/GestionEmpleados";
 import AutoLogout from "./components/AutoLogout";
-import ForgotPassword from "./pages/ForgotPassword"
-import ResetPassword from "./pages/ResetPassword"
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import Inventario from "./pages/Inventario";
+import Pedidos from "./pages/Pedidos";
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/perfil" element={<Perfil />} />
         <Route path="/empleados" element={<GestionEmpleados />} />
+        <Route path="/inventory" element={<Inventario />} />
+        <Route path="/orders" element={<Pedidos />} />
       </Routes>
     </BrowserRouter>
   );

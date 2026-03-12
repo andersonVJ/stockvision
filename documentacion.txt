@@ -1,0 +1,39 @@
+# Documentación General del Proyecto StockVision
+
+## 1. Estado Actual del Proyecto
+StockVision es un **Sistema Inteligente de Gestión de Inventarios y Predicción Automática**. 
+Actualmente, el proyecto cuenta con una robusta arquitectura SaaS Multi-Empresa con la base del backend (Django REST) y el frontend (React/Vite) operativa.
+El sistema soporta un Control de Acceso Basado en Roles (RBAC) con tres perfiles: `ADMIN` (Control Maestro), `JEFE_INVENTARIO` (Gestor logístico) y `EMPLEADO` (Personal de Bodega/Almacén).
+
+## 2. Módulos Implementados (Backend y Frontend)
+
+### 2.1 Módulo `users` (Usuarios, Autenticación y Empleados)
+- Login biométrico simulado y JWT con expiración automática.
+- Gestión de Empleados (CRUD completo para el ADMIN).
+- Asignación funcional de cargos (e.g. BODEGA, ALMACEN) para direccionar la lógica del negocio.
+- Filtrado automático de información "Multi-Tenant" (cada usuario ve solo la información de su propia empresa `Company`).
+
+### 2.2 Módulo `inventory` (Inventarios y Alertas)
+- **Categorías y Productos:** Creación de SKUs unificados por compañía.
+- **Stock y Movimientos:** Control automatizado de Entradas, Salidas y Ajustes. Cada movimiento interactúa con la cantidad real de inventario y guarda un registro auditable del responsable y la fecha.
+- **Stock Crítico (Alertas):** Listado en tiempo real que mide el Inventario actual versus el Nivel Mínimo requerido, alimentando una campana de notificaciones del inicio.
+
+### 2.3 Módulo de Pedidos y Recepción Logística (`Orders`) - ¡NUEVO!
+- **Solicitud de Pedidos:** Los empleados y administradores pueden requerir nuevas unidades seleccionando productos y cantidades.
+- **Flujo de Aprobación:** Si es solicitado por Bodega, cae en estado `PENDIENTE`. Los Administradores y Jefes lo pueden `APROBAR`.
+- **Recepción Dinámica (Descarga de Camión):** Los operarios pueden presionar "Recibir Mercancía", ajustando la cantidad *real* que les entregaron. Al momento de confirmar, se inyectan automáticamente en el Inventario Total los movimientos de "ENTRADA".
+- **Notificaciones Dual:** La campana central avisa a los Admins de pedidos nuevos por aprobar, y avisa a los de Bodega del estado de sus alertas y envíos.
+
+## 3. Módulos por Definir (Futuros)
+- **Módulo de Predicción y Analítica (ML/AI):** Lógica avanzada para calcular la "rotación predictiva" mediante modelos de consumo para sugerir reabastecimiento antes de los cortes.
+- **Reportes Avanzados:** Generación de PDF/Excel.
+
+## 4. Qué está funcionando (Características Claves)
+- **Seguridad en Inactividad y AutoLogout:** (15 minutos).
+- **Protección de Rutas Frontend y Sidebar Dinámico:** El menú se oculta según el rol del usuario conectado.
+- **Multitenancy y Permisos Seguros:** El empleado sólo puede modificar (POST) Movimientos Logísticos y Recepciones de Pedidos, pero no puede borrar productos ni manejar Finanzas, todo asegurado en los Viewsets y el `permissions.py`.
+
+## 5. Arquitectura del Sistema
+- **Patrón:** Separación API REST.
+- **Backend Stack:** Python / Django + Django REST Framework + SimpleJWT. SQLite3.
+- **Frontend Stack:** React, Vite, Tailwind CSS v4, Axios, React Router Dom, Lucide-React Icons.

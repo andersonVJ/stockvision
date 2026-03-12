@@ -7,7 +7,7 @@ import {
     ShoppingCart,
     Settings,
     LogOut,
-    BarChart2,
+    Truck,
     User,
     Users
 } from "lucide-react";
@@ -37,6 +37,7 @@ export default function Sidebar() {
         { name: "Inicio", path: "/inicio", icon: <Home className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO"] },
         { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO"] },
         { name: "Inventario", path: "/inventory", icon: <Package className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO"] },
+        { name: "Pedidos y Recepción", path: "/orders", icon: <Truck className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO"] },
         { name: "Predicción IA", path: "/predictions", icon: <TrendingUp className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO"] },
         { name: "Ventas", path: "/sales", icon: <ShoppingCart className="w-[18px] h-[18px]" />, roles: ["ADMIN"] },
         { name: "Empleados", path: "/empleados", icon: <Users className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO"] },

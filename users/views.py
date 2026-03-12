@@ -66,6 +66,9 @@ class EmployeeListCreateView(generics.ListCreateAPIView):
         serializer = RegisterUserSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
+            if request.user.company:
+                user.company = request.user.company
+                user.save()
             user_data = UserSerializer(user).data
             return Response(user_data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

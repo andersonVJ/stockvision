@@ -1,9 +1,10 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import CompanyViewSet, request_password_reset, reset_password
+from .views import CompanyViewSet, BranchViewSet, request_password_reset, reset_password
 
 router = DefaultRouter()
-router.register(r'', CompanyViewSet)
+router.register(r'branches', BranchViewSet, basename='branch')
+router.register(r'', CompanyViewSet, basename='company')
 
 urlpatterns = [
 

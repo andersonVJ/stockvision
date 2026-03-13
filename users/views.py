@@ -53,22 +53,31 @@ class EmployeeListCreateView(generics.ListCreateAPIView):
         # Todos los usuarios que tienen rol distinto a ADMIN (o si es admin, puede ver a todos)
         user = self.request.user
         if user.is_admin:
+            if user.company:
+                return User.objects.filter(company=user.company).order_by('-date_joined')
             return User.objects.all().order_by('-date_joined')
         elif user.is_jefe_inventario:
-            # Jefe solo puede ver EMPLEADO
-            return User.objects.filter(role=User.EMPLEADO).order_by('-date_joined')
+            # Jefe solo puede ver EMPLEADO de su sede
+            return User.objects.filter(role=User.EMPLEADO, branch=user.branch).order_by('-date_joined')
         return User.objects.none()
 
     def create(self, request, *args, **kwargs):
-        if not request.user.is_admin:
+        if not request.user.is_admin and not request.user.is_jefe_inventario:
             return Response({"error": "No tienes permisos para registrar empleados"}, status=status.HTTP_403_FORBIDDEN)
+            
+        data = request.data.copy()
+        if request.user.is_jefe_inventario:
+            data['branch'] = request.user.branch.id if request.user.branch else None
+            data['role'] = User.EMPLEADO
         
-        serializer = RegisterUserSerializer(data=request.data)
+        serializer = RegisterUserSerializer(data=data)
         if serializer.is_valid():
             user = serializer.save()
             if request.user.company:
                 user.company = request.user.company
-                user.save()
+            if request.user.is_jefe_inventario and request.user.branch:
+                user.branch = request.user.branch
+            user.save()
             user_data = UserSerializer(user).data
             return Response(user_data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

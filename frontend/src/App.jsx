@@ -9,6 +9,9 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Inventario from "./pages/Inventario";
 import Pedidos from "./pages/Pedidos";
+import GestionSedes from "./pages/GestionSedes";
+import PuntoDeVenta from "./pages/PuntoDeVenta";
+import HistorialVentas from "./pages/HistorialVentas";
 
 function App() {
   return (
@@ -24,6 +27,9 @@ function App() {
         <Route path="/empleados" element={<GestionEmpleados />} />
         <Route path="/inventory" element={<Inventario />} />
         <Route path="/orders" element={<Pedidos />} />
+        <Route path="/sedes" element={<GestionSedes />} />
+        <Route path="/pos" element={<PuntoDeVenta />} />
+        <Route path="/ventas" element={<HistorialVentas />} />
       </Routes>
     </BrowserRouter>
   );

@@ -31,14 +31,18 @@ class Product(models.Model):
         return f"[{self.sku}] {self.name}"
 
 class Inventory(models.Model):
-    product = models.OneToOneField(Product, on_delete=models.CASCADE, related_name='inventory')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='inventories')
+    branch = models.ForeignKey('companies.Branch', on_delete=models.CASCADE, related_name='inventories')
     quantity = models.IntegerField(default=0)
     min_stock = models.IntegerField(default=5)
     max_stock = models.IntegerField(default=100)
     last_updated = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        unique_together = ('product', 'branch')
+
     def __str__(self):
-        return f"Inventory for {self.product.name}"
+        return f"Inventory for {self.product.name} at {self.branch.name}"
 
 class StockMovement(models.Model):
     ENTRY = 'ENTRY'
@@ -54,6 +58,7 @@ class StockMovement(models.Model):
     movement_type = models.CharField(max_length=15, choices=MOVEMENT_CHOICES)
     quantity = models.IntegerField()
     company = models.ForeignKey('companies.Company', on_delete=models.CASCADE)
+    branch = models.ForeignKey('companies.Branch', on_delete=models.CASCADE, related_name='movements', null=True)
     date = models.DateTimeField(auto_now_add=True)
     notes = models.TextField(blank=True, null=True)
     
@@ -96,10 +101,26 @@ class OrderItem(models.Model):
     def __str__(self):
         return f"{self.requested_quantity}x {self.product.name} (Order #{self.order.id})"
 
-from django.db.models.signals import post_save
-from django.dispatch import receiver
+class Sale(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'Pendiente'),
+        ('COMPLETED', 'Completada'),
+        ('CANCELLED', 'Cancelada'),
+    )
+    branch = models.ForeignKey('companies.Branch', on_delete=models.CASCADE, related_name='sales')
+    user = models.ForeignKey('users.User', on_delete=models.PROTECT, related_name='sales')
+    date = models.DateTimeField(auto_now_add=True)
+    total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='COMPLETED')
+    
+    def __str__(self):
+        return f"Sale #{self.id} - {self.branch.name} - {self.status}"
 
-@receiver(post_save, sender=Product)
-def create_product_inventory(sender, instance, created, **kwargs):
-    if created:
-        Inventory.objects.create(product=instance)
+class SaleItem(models.Model):
+    sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    quantity = models.IntegerField()
+    price_at_sale = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    def __str__(self):
+        return f"{self.quantity}x {self.product.name} (Sale #{self.sale.id})"

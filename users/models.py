@@ -30,6 +30,7 @@ class User(AbstractUser):
     assigned_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_employees')
     email = models.EmailField(unique=True, verbose_name='Correo electrónico')
     company = models.ForeignKey('companies.Company', on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
+    branch = models.ForeignKey('companies.Branch', on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
 
 
     @property

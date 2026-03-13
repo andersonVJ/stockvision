@@ -8,10 +8,11 @@ User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
     assigned_by_name = serializers.SerializerMethodField()
     position_display = serializers.CharField(source='get_position_display', read_only=True)
+    branch_name = serializers.ReadOnlyField(source='branch.name')
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role', 'company', 'cedula', 'position', 'position_display', 'assigned_by', 'assigned_by_name')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role', 'company', 'branch', 'branch_name', 'cedula', 'position', 'position_display', 'assigned_by', 'assigned_by_name')
         read_only_fields = ('id', 'assigned_by_name')
 
     def get_assigned_by_name(self, obj):
@@ -25,7 +26,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'password', 'password_confirm', 'first_name', 'last_name', 'role', 'company', 'cedula')
+        fields = ('username', 'email', 'password', 'password_confirm', 'first_name', 'last_name', 'role', 'company', 'branch', 'cedula')
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
@@ -45,6 +46,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
             last_name=validated_data.get('last_name', ''),
             role=validated_data.get('role', User.EMPLEADO),
             company=validated_data.get('company', None),
+            branch=validated_data.get('branch', None),
             cedula=validated_data.get('cedula', None)
         )
         return user

@@ -49,3 +49,23 @@ export const createMovement = async (data) => {
     const res = await axios.post("http://127.0.0.1:8000/api/inventory/movements/", data, getAuthHeaders());
     return res.data;
 };
+
+export const getBranches = async () => {
+    const res = await axios.get("http://127.0.0.1:8000/api/companies/branches/", getAuthHeaders());
+    return res.data;
+};
+
+export const createBranch = async (data) => {
+    const res = await axios.post("http://127.0.0.1:8000/api/companies/branches/", data, getAuthHeaders());
+    return res.data;
+};
+
+export const getSales = async () => {
+    const res = await axios.get("http://127.0.0.1:8000/api/inventory/sales/", getAuthHeaders());
+    return res.data;
+};
+
+export const createSale = async (data) => {
+    const res = await axios.post("http://127.0.0.1:8000/api/inventory/sales/", data, getAuthHeaders());
+    return res.data;
+};

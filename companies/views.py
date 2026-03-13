@@ -15,8 +15,8 @@ from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth import get_user_model
 
-from .models import Company, PasswordResetToken
-from .serializers import CompanySerializer
+from .models import Company, PasswordResetToken, Branch
+from .serializers import CompanySerializer, BranchSerializer
 
 
 User = get_user_model()
@@ -45,6 +45,31 @@ class CompanyViewSet(viewsets.ModelViewSet):
             return Company.objects.filter(id=user.company.id)
 
         return Company.objects.none()
+
+class BranchViewSet(viewsets.ModelViewSet):
+    queryset = Branch.objects.all()
+    serializer_class = BranchSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff or getattr(user, "role", None) == "ADMIN":
+            if user.company:
+                return Branch.objects.filter(company=user.company)
+            return Branch.objects.all()
+        if user.branch:
+            return Branch.objects.filter(id=user.branch.id)
+        return Branch.objects.none()
+
+    def perform_create(self, serializer):
+        company = self.request.user.company
+        branch = serializer.save(company=company)
+        
+        # Al crear Sede, crear Inventory para todos los Productos de la Empresa
+        from inventory.models import Product, Inventory
+        products = Product.objects.filter(company=company)
+        for product in products:
+            Inventory.objects.create(product=product, branch=branch)
 
 
 # ============================================

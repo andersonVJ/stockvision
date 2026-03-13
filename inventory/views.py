@@ -2,27 +2,30 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import Category, Product, Inventory, StockMovement, Order, OrderItem
-from .serializers import CategorySerializer, ProductSerializer, InventorySerializer, StockMovementSerializer, OrderSerializer, OrderItemSerializer
+from .models import Category, Product, Inventory, StockMovement, Order, OrderItem, Sale, SaleItem
+from .serializers import CategorySerializer, ProductSerializer, InventorySerializer, StockMovementSerializer, OrderSerializer, OrderItemSerializer, SaleSerializer, SaleItemSerializer
 from .permissions import IsInventoryManagerOrReadOnly
 
 class BaseInventoryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsInventoryManagerOrReadOnly]
 
-    # Helper method to filter by company if the user is not an admin
     def get_queryset(self):
         user = self.request.user
         queryset = super().get_queryset()
         
-        if user.is_staff or user.role == 'ADMIN':
+        if user.is_staff or getattr(user, 'role', None) == 'ADMIN':
+            if hasattr(queryset.model, 'company') and user.company:
+                return queryset.filter(company=user.company)
+            # Para modelos que tienen branch en lugar de company
+            elif hasattr(queryset.model, 'branch') and user.company:
+                return queryset.filter(branch__company=user.company)
             return queryset
         
-        # Depending on the model, we filter by the appropriate company relationship
-        if hasattr(queryset.model, 'company') and user.company:
+        # Usuarios atados a una Sede (JEFE, EMPLEADO)
+        if hasattr(queryset.model, 'branch') and getattr(user, 'branch', None):
+            return queryset.filter(branch=user.branch)
+        elif hasattr(queryset.model, 'company') and user.company:
             return queryset.filter(company=user.company)
-        elif queryset.model == Inventory and user.company:
-            # For Inventory model, accessing through product
-            return queryset.filter(product__company=user.company)
             
         return queryset.none()
 
@@ -56,9 +59,15 @@ class ProductViewSet(BaseInventoryViewSet):
             raise ValidationError({"sku": "Ya existe un producto con este SKU en la empresa."})
 
         if company_id and (self.request.user.is_staff or getattr(self.request.user, 'is_admin', False)):
-            serializer.save(company_id=company_id)
+            product = serializer.save(company_id=company_id)
         else:
-            serializer.save(company=company)
+            product = serializer.save(company=company)
+            
+        from companies.models import Branch
+        from .models import Inventory
+        branches = Branch.objects.filter(company=product.company)
+        for branch in branches:
+            Inventory.objects.create(product=product, branch=branch)
 
 class InventoryViewSet(BaseInventoryViewSet):
     queryset = Inventory.objects.all()
@@ -82,11 +91,17 @@ class StockMovementViewSet(BaseInventoryViewSet):
     
     def perform_create(self, serializer):
         company_id = self.request.data.get('company')
-        company = self.request.user.company
-        if company_id and (self.request.user.is_staff or getattr(self.request.user, 'is_admin', False)):
-            stock_movement = serializer.save(user=self.request.user, company_id=company_id)
+        user = self.request.user
+        company = user.company
+        branch = user.branch
+        if not branch:
+            inventory = serializer.validated_data.get('inventory')
+            if inventory:
+                branch = inventory.branch
+        if company_id and (user.is_staff or getattr(user, 'is_admin', False)):
+            stock_movement = serializer.save(user=user, company_id=company_id, branch=branch)
         else:
-            stock_movement = serializer.save(user=self.request.user, company=company)
+            stock_movement = serializer.save(user=user, company=company, branch=branch)
         
         # Update the actual inventory quantity based on the movement
         inventory = stock_movement.inventory
@@ -180,4 +195,71 @@ class OrderViewSet(BaseInventoryViewSet):
         order.save()
         
         return Response({'status': 'Pedido Marcado como Entregado y Stock Actualizado'})
+
+class SaleViewSet(BaseInventoryViewSet):
+    queryset = Sale.objects.all()
+    serializer_class = SaleSerializer
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        branch = user.branch
+
+        if not branch:
+            branch_id = self.request.data.get('branch')
+            if branch_id:
+                from companies.models import Branch
+                if user.is_staff or getattr(user, 'role', None) == 'ADMIN':
+                    branch = Branch.objects.filter(id=branch_id).first()
+                else:
+                    branch = Branch.objects.filter(id=branch_id, company=user.company).first()
+
+        if not branch:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError("No tienes una sede asignada para realizar ventas o no seleccionaste ninguna.")
+            
+        status = self.request.data.get('status', 'COMPLETED')
+        sale = serializer.save(branch=branch, user=user, status=status)
+        
+        items_data = self.request.data.get('items', [])
+        total = 0
+        from rest_framework.exceptions import ValidationError
+        
+        for item in items_data:
+            product_id = item.get('product')
+            quantity = int(item.get('quantity', 0))
+            if product_id and quantity > 0:
+                try:
+                    product = Product.objects.get(id=product_id)
+                except Product.DoesNotExist:
+                    raise ValidationError(f"Producto {product_id} no existe")
+                    
+                price = product.price
+                SaleItem.objects.create(sale=sale, product=product, quantity=quantity, price_at_sale=price)
+                total += float(price) * quantity
+                
+                # Descontamos stock del inventario de LA SEDE
+                try:
+                    inventory = Inventory.objects.get(product=product, branch=branch)
+                except Inventory.DoesNotExist:
+                    raise ValidationError(f"Inventario para {product.name} no encontrado en tu sede.")
+                
+                if inventory.quantity < quantity:
+                    raise ValidationError(f"Inventario insuficiente para {product.name}.")
+                    
+                inventory.quantity -= quantity
+                inventory.save()
+                
+                # Registramos el movimiento
+                StockMovement.objects.create(
+                    inventory=inventory,
+                    movement_type='EXIT',
+                    quantity=quantity,
+                    company=branch.company,
+                    branch=branch,
+                    user=user,
+                    notes=f"Venta #{sale.id}"
+                )
+        
+        sale.total = total
+        sale.save()
 

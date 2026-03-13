@@ -29,10 +29,18 @@ export default function Inicio() {
       if (role === "ADMIN" || role === "JEFE_INVENTARIO") {
         try {
           const lsa = await getLowStockAlerts();
-          setAlerts(lsa);
+          if (Array.isArray(lsa)) {
+            setAlerts(lsa);
+          } else if (lsa && lsa.results) {
+            setAlerts(lsa.results);
+          }
           
           const ords = await getOrders();
-          setPendingOrders(ords.filter(o => o.status === "PENDING_APPROVAL"));
+          if (Array.isArray(ords)) {
+            setPendingOrders(ords.filter(o => o.status === "PENDING_APPROVAL"));
+          } else if (ords && ords.results) {
+            setPendingOrders(ords.results.filter(o => o.status === "PENDING_APPROVAL"));
+          }
         } catch (error) {
           console.error("Error fetching alerts data", error);
         }
@@ -151,10 +159,9 @@ export default function Inicio() {
             Puedes ver más detalles y cambiar tu contraseña en tu Perfil.
           </p>
 
-        </div>
+          </div>
         </div>
       </div>
-
     </div>
   );
 }

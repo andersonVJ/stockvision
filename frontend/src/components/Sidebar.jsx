@@ -9,7 +9,10 @@ import {
     LogOut,
     Truck,
     User,
-    Users
+    Users,
+    Building2,
+    Store,
+    Receipt
 } from "lucide-react";
 
 import Logo from "./Logo";
@@ -36,11 +39,13 @@ export default function Sidebar() {
     const menuItems = [
         { name: "Inicio", path: "/inicio", icon: <Home className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO"] },
         { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO"] },
+        { name: "Sedes", path: "/sedes", icon: <Building2 className="w-[18px] h-[18px]" />, roles: ["ADMIN"] },
         { name: "Inventario", path: "/inventory", icon: <Package className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO"] },
+        { name: "Punto de Venta", path: "/pos", icon: <Store className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO"] },
+        { name: "Historial de Ventas", path: "/ventas", icon: <Receipt className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO"] },
         { name: "Pedidos y Recepción", path: "/orders", icon: <Truck className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO"] },
         { name: "Predicción IA", path: "/predictions", icon: <TrendingUp className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO"] },
-        { name: "Ventas", path: "/sales", icon: <ShoppingCart className="w-[18px] h-[18px]" />, roles: ["ADMIN"] },
-        { name: "Empleados", path: "/empleados", icon: <Users className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO"] },
+        { name: "Empleados", path: "/empleados", icon: <Users className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO"] }
     ];
 
     // Filter items based on user role

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Product, Inventory, StockMovement, Order, OrderItem
+from .models import Category, Product, Inventory, StockMovement, Order, OrderItem, Sale, SaleItem
 from users.serializers import UserSerializer
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -19,6 +19,7 @@ class ProductSerializer(serializers.ModelSerializer):
 class InventorySerializer(serializers.ModelSerializer):
     product_name = serializers.ReadOnlyField(source='product.name')
     product_sku = serializers.ReadOnlyField(source='product.sku')
+    branch_name = serializers.ReadOnlyField(source='branch.name')
     
     class Meta:
         model = Inventory
@@ -28,18 +29,18 @@ class InventorySerializer(serializers.ModelSerializer):
 class StockMovementSerializer(serializers.ModelSerializer):
     inventory_product_name = serializers.ReadOnlyField(source='inventory.product.name')
     user_name = serializers.ReadOnlyField(source='user.username')
+    branch_name = serializers.ReadOnlyField(source='branch.name')
 
     class Meta:
         model = StockMovement
         fields = '__all__'
-        read_only_fields = ('date', 'user', 'company')
+        read_only_fields = ('date', 'user', 'company', 'branch')
 
     def validate(self, data):
         if data.get('movement_type') == 'EXIT':
             inventory = data.get('inventory')
             quantity = data.get('quantity')
             if inventory and quantity and inventory.quantity < quantity:
-                raise serializers.ValidationError({"quantity": "No hay suficiente stock para realizar esta salida."})
                 raise serializers.ValidationError({"quantity": "No hay suficiente stock para realizar esta salida."})
         return data
 
@@ -59,3 +60,20 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = '__all__'
         read_only_fields = ('company', 'created_by', 'approved_by', 'status')
+
+class SaleItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.ReadOnlyField(source='product.name')
+    
+    class Meta:
+        model = SaleItem
+        fields = ['id', 'product', 'product_name', 'quantity', 'price_at_sale']
+
+class SaleSerializer(serializers.ModelSerializer):
+    items = SaleItemSerializer(many=True, read_only=True)
+    user_name = serializers.ReadOnlyField(source='user.first_name')
+    branch_name = serializers.ReadOnlyField(source='branch.name')
+
+    class Meta:
+        model = Sale
+        fields = '__all__'
+        read_only_fields = ('branch', 'user', 'date', 'status', 'total')

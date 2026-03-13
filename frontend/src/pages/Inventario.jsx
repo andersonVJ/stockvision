@@ -89,8 +89,9 @@ export default function Inventario() {
     } catch (err) { alert("Error al registrar movimiento. ¿Es posible que no tengas stock suficiente para esta salida?"); }
   };
 
-  const getInventoryForProduct = (productId) => {
-    return inventories.find(i => i.product === productId);
+  const getProductPrice = (productId) => {
+    const p = products.find(prod => prod.id === productId);
+    return p ? p.price : "-";
   };
 
   return (
@@ -131,14 +132,18 @@ export default function Inventario() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {products.map(p => {
-                        const inv = getInventoryForProduct(p.id);
+                      {inventories.map(inv => {
                         return (
-                          <tr key={p.id}>
-                            <td className="px-4 py-3 font-semibold">{p.sku}</td>
-                            <td className="px-4 py-3">{p.name} <span className="text-xs text-slate-400 block">{p.category_name}</span></td>
-                            <td className="px-4 py-3">${p.price}</td>
-                            <td className="px-4 py-3 font-bold text-blue-600">{inv ? inv.quantity : 0} uds</td>
+                          <tr key={inv.id}>
+                            <td className="px-4 py-3 font-semibold">{inv.product_sku}</td>
+                            <td className="px-4 py-3">
+                              {inv.product_name}
+                              {user.role === 'ADMIN' && (
+                                 <span className="text-xs font-bold text-blue-500 block uppercase pt-0.5">Sede: {inv.branch_name}</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">${getProductPrice(inv.product)}</td>
+                            <td className="px-4 py-3 font-bold text-blue-600">{inv.quantity} uds</td>
                           </tr>
                         );
                       })}
@@ -184,6 +189,7 @@ export default function Inventario() {
                         <th className="px-4 py-3">Tipo</th>
                         <th className="px-4 py-3">Producto</th>
                         <th className="px-4 py-3">Cantidad</th>
+                        <th className="px-4 py-3">Sede</th>
                         <th className="px-4 py-3">Usuario</th>
                       </tr>
                     </thead>
@@ -198,6 +204,7 @@ export default function Inventario() {
                           </td>
                           <td className="px-4 py-3">{m.inventory_product_name}</td>
                           <td className="px-4 py-3 font-bold">{m.quantity}</td>
+                          <td className="px-4 py-3 text-xs uppercase text-slate-500 font-bold">{m.branch_name || 'N/A'}</td>
                           <td className="px-4 py-3">{m.user_name}</td>
                         </tr>
                       ))}
@@ -220,7 +227,10 @@ export default function Inventario() {
                             {a.product_name} 
                             <span className="text-red-600">Quedan: {a.quantity}</span>
                           </h3>
-                          <p className="text-xs text-slate-500 mt-1">Nivel mínimo requerido: {a.min_stock}</p>
+                          <div className="flex justify-between mt-1 items-center">
+                            <p className="text-xs text-slate-500">Min. req: {a.min_stock}</p>
+                            <p className="text-[10px] font-bold text-blue-500 uppercase">{a.branch_name}</p>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -268,7 +278,7 @@ export default function Inventario() {
               </select>
               <select required onChange={e=>setMovData({...movData, inventory: e.target.value})} className="border p-2 rounded">
                 <option value="">Seleccione Producto en Bodega...</option>
-                {inventories.map(i => <option key={i.id} value={i.id}>{i.product_name} (Stock actual: {i.quantity})</option>)}
+                {inventories.map(i => <option key={i.id} value={i.id}>{i.product_name} - {i.branch_name} (Stock: {i.quantity})</option>)}
               </select>
               <input required type="number" min="1" placeholder="Cantidad a mover" onChange={e=>setMovData({...movData, quantity: e.target.value})} className="border p-2 rounded outline-none" />
               <div className="flex justify-end gap-2 mt-2">

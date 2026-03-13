@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
+import { getBranches } from "../services/inventoryService";
 
 export default function GestionEmpleados() {
   const [user, setUser] = useState({});
@@ -17,10 +18,12 @@ export default function GestionEmpleados() {
     last_name: "",
     cedula: "",
     role: "EMPLEADO",
+    branch: "",
     password: "",
     password_confirm: ""
   });
 
+  const [branches, setBranches] = useState([]);
   const [formError, setFormError] = useState("");
 
   useEffect(() => {
@@ -32,6 +35,9 @@ export default function GestionEmpleados() {
     } catch (e) {
       console.error("Error parsing user from localStorage:", e);
     }
+    
+    // Fetch branches for branch assignment
+    getBranches().then(data => setBranches(data)).catch(console.error);
   }, []);
 
   const fetchEmployees = async () => {
@@ -153,6 +159,7 @@ export default function GestionEmpleados() {
           last_name: "",
           cedula: "",
           role: "EMPLEADO",
+          branch: "",
           password: "",
           password_confirm: ""
         });
@@ -223,6 +230,9 @@ export default function GestionEmpleados() {
                           <div className="text-xs text-slate-400">
                             {emp.email}
                           </div>
+                          <div className="text-[10px] uppercase font-bold text-blue-500 mt-1">
+                            {emp.branch_name ? `Sede: ${emp.branch_name}` : "Toda la Empresa"}
+                          </div>
                         </td>
 
                         <td className="px-6 py-4">{emp.cedula || "-"}</td>
@@ -262,6 +272,7 @@ export default function GestionEmpleados() {
                                     last_name: emp.last_name || "",
                                     cedula: emp.cedula || "",
                                     role: emp.role || "EMPLEADO",
+                                    branch: emp.branch || "",
                                     password: "",
                                     password_confirm: ""
                                   });
@@ -385,6 +396,76 @@ export default function GestionEmpleados() {
                   className="w-full border border-slate-300 rounded-lg py-2 px-3 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
+
+              {user.role === "ADMIN" && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Rol
+                  </label>
+                  <select
+                    value={formData.role}
+                    onChange={(e) =>
+                      setFormData({ ...formData, role: e.target.value })
+                    }
+                    className="w-full border border-slate-300 rounded-lg py-2 px-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    <option value="EMPLEADO">Empleado</option>
+                    <option value="JEFE_INVENTARIO">Jefe de Inventario</option>
+                    <option value="ADMIN">Administrador</option>
+                  </select>
+                </div>
+              )}
+
+              {user.role === "ADMIN" && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Sede (Si es Admin, esto es opcional)
+                  </label>
+                  <select
+                    value={formData.branch}
+                    onChange={(e) =>
+                      setFormData({ ...formData, branch: e.target.value })
+                    }
+                    className="w-full border border-slate-300 rounded-lg py-2 px-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    <option value="">Ninguna o Toda la Empresa...</option>
+                    {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {!editingEmployee && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Contraseña temporal
+                    </label>
+                    <input
+                      required
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) =>
+                        setFormData({ ...formData, password: e.target.value })
+                      }
+                      className="w-full border border-slate-300 rounded-lg py-2 px-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Confirmar Contraseña
+                    </label>
+                    <input
+                      required
+                      type="password"
+                      value={formData.password_confirm}
+                      onChange={(e) =>
+                        setFormData({ ...formData, password_confirm: e.target.value })
+                      }
+                      className="w-full border border-slate-300 rounded-lg py-2 px-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="col-span-2 flex justify-end gap-3 mt-4">
                 <button

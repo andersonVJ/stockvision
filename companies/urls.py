@@ -8,11 +8,11 @@ router.register(r'', CompanyViewSet, basename='company')
 
 urlpatterns = [
 
-    # CRUD Companies
-    path('', include(router.urls)),
-
-    # Password reset
+    # Password reset MUST be above router.urls
     path("password-reset/", request_password_reset),
     path("password-reset-confirm/", reset_password),
+
+    # CRUD Companies
+    path('', include(router.urls)),
 
 ]

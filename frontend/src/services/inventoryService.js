@@ -60,6 +60,16 @@ export const createBranch = async (data) => {
     return res.data;
 };
 
+export const updateBranch = async (id, data) => {
+    const res = await axios.put(`http://127.0.0.1:8000/api/companies/branches/${id}/`, data, getAuthHeaders());
+    return res.data;
+};
+
+export const deleteBranch = async (id) => {
+    const res = await axios.delete(`http://127.0.0.1:8000/api/companies/branches/${id}/`, getAuthHeaders());
+    return res.data;
+};
+
 export const getSales = async () => {
     const res = await axios.get("http://127.0.0.1:8000/api/inventory/sales/", getAuthHeaders());
     return res.data;

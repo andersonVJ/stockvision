@@ -79,6 +79,7 @@ class BranchViewSet(viewsets.ModelViewSet):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def request_password_reset(request):
+    email = request.data.get("email")
 
     if not email:
         return Response(

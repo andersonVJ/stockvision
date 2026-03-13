@@ -178,9 +178,27 @@ class OrderViewSet(BaseInventoryViewSet):
             
             # create stock movement
             if rec_qty > 0:
+                target_branch = user.branch
+                if not target_branch:
+                    target_branch_id = request.data.get('branch')
+                    if target_branch_id:
+                        from companies.models import Branch
+                        target_branch = Branch.objects.filter(id=target_branch_id).first()
+                if not target_branch:
+                    from companies.models import Branch
+                    target_branch = Branch.objects.filter(company=order.company).first()
+                
+                from inventory.models import Inventory
+                inventory, created = Inventory.objects.get_or_create(
+                    product=item.product,
+                    branch=target_branch,
+                    defaults={'quantity': 0, 'min_stock': 5, 'max_stock': 100}
+                )
+
                 StockMovement.objects.create(
-                    inventory=item.product.inventory,
+                    inventory=inventory,
                     company=order.company,
+                    branch=target_branch,
                     user=user,
                     movement_type='ENTRY',
                     quantity=rec_qty,
@@ -188,8 +206,8 @@ class OrderViewSet(BaseInventoryViewSet):
                 )
                 
                 # update actual inventory
-                item.product.inventory.quantity += rec_qty
-                item.product.inventory.save()
+                inventory.quantity += rec_qty
+                inventory.save()
         
         order.status = 'DELIVERED'
         order.save()

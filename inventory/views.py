@@ -122,12 +122,13 @@ class OrderViewSet(BaseInventoryViewSet):
     def perform_create(self, serializer):
         company = self.request.user.company
         user = self.request.user
+        branch_id = self.request.data.get('branch')
         
         # If Admin or Jefe creates it, starts APPROVED
         if user.role in ['ADMIN', 'JEFE_INVENTARIO'] or user.is_staff:
-            order = serializer.save(company=company, created_by=user, status='APPROVED', approved_by=user)
+            order = serializer.save(company=company, created_by=user, status='APPROVED', approved_by=user, branch_id=branch_id)
         else:
-            order = serializer.save(company=company, created_by=user, status='PENDING_APPROVAL')
+            order = serializer.save(company=company, created_by=user, status='PENDING_APPROVAL', branch_id=branch_id)
             
         # Create items from requested data
         items_data = self.request.data.get('items', [])
@@ -155,6 +156,22 @@ class OrderViewSet(BaseInventoryViewSet):
         return Response({'status': 'Pedido Aprobado'})
 
     @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        order = self.get_object()
+        user = request.user
+        
+        if user.role not in ['ADMIN', 'JEFE_INVENTARIO'] and not user.is_staff:
+            return Response({'error': 'No tienes permiso para rechazar pedidos'}, status=403)
+            
+        if order.status != 'PENDING_APPROVAL':
+            return Response({'error': 'Este pedido no está pendiente de aprobación'}, status=400)
+            
+        order.status = 'REJECTED'
+        order.save()
+        
+        return Response({'status': 'Pedido Rechazado'})
+
+    @action(detail=True, methods=['post'])
     def deliver(self, request, pk=None):
         order = self.get_object()
         user = request.user
@@ -178,7 +195,9 @@ class OrderViewSet(BaseInventoryViewSet):
             
             # create stock movement
             if rec_qty > 0:
-                target_branch = user.branch
+                target_branch = order.branch
+                if not target_branch:
+                    target_branch = user.branch
                 if not target_branch:
                     target_branch_id = request.data.get('branch')
                     if target_branch_id:

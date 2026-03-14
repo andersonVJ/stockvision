@@ -55,6 +55,7 @@ class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     created_by_name = serializers.ReadOnlyField(source='created_by.first_name')
     approved_by_name = serializers.ReadOnlyField(source='approved_by.first_name')
+    branch_name = serializers.ReadOnlyField(source='branch.name')
     
     class Meta:
         model = Order

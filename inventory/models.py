@@ -78,6 +78,7 @@ class Order(models.Model):
     )
     
     company = models.ForeignKey('companies.Company', on_delete=models.CASCADE, related_name='orders')
+    branch = models.ForeignKey('companies.Branch', on_delete=models.CASCADE, related_name='orders', null=True, blank=True)
     created_by = models.ForeignKey('users.User', on_delete=models.PROTECT, related_name='created_orders')
     approved_by = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_orders')
     

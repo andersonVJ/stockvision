@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
-import { getOrders, createOrder, approveOrder, deliverOrder } from "../services/orderService";
-import { getProducts } from "../services/inventoryService";
+import { getOrders, createOrder, approveOrder, deliverOrder, rejectOrder } from "../services/orderService";
+import { getProducts, getBranches } from "../services/inventoryService";
 
 export default function Pedidos() {
   const [user, setUser] = useState({});
   const [activeTab, setActiveTab] = useState("pendientes"); // pendientes, transito, historial
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -24,8 +25,14 @@ export default function Pedidos() {
   const loadData = async () => {
     setLoading(true);
     try {
-      setOrders(await getOrders());
-      setProducts(await getProducts());
+      const [ordersData, productsData, branchesData] = await Promise.all([
+        getOrders(),
+        getProducts(),
+        getBranches()
+      ]);
+      setOrders(ordersData);
+      setProducts(productsData);
+      setBranches(branchesData);
     } catch (error) {
       console.error("Error loading orders data", error);
     }
@@ -47,6 +54,7 @@ export default function Pedidos() {
 
   // CREATE ORDER FORM
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedBranch, setSelectedBranch] = useState("");
   const [newOrderItems, setNewOrderItems] = useState([{ product: "", requested_quantity: 1 }]);
 
   const handleAddOrderItem = () => {
@@ -55,10 +63,18 @@ export default function Pedidos() {
 
   const handleCreateOrder = async (e) => {
     e.preventDefault();
+    if (!selectedBranch) {
+      alert("Por favor seleccione una sede");
+      return;
+    }
     try {
-      await createOrder({ items: newOrderItems });
+      await createOrder({ 
+        branch: selectedBranch,
+        items: newOrderItems 
+      });
       setShowCreateModal(false);
       setNewOrderItems([{ product: "", requested_quantity: 1 }]);
+      setSelectedBranch("");
       loadData();
     } catch (err) {
       alert("Error al crear el pedido");
@@ -74,6 +90,17 @@ export default function Pedidos() {
     } catch (err) {
       alert("Error al aprobar");
     }
+  };
+
+  // REJECT ORDER
+  const handleReject = async (id) => {
+      if (!window.confirm("¿Está seguro de denegar este pedido?")) return;
+      try {
+          await rejectOrder(id);
+          loadData();
+      } catch (err) {
+          alert("Error al denegar el pedido");
+      }
   };
 
   // DELIVER ORDER FORM
@@ -108,6 +135,8 @@ export default function Pedidos() {
     'PENDING_APPROVAL': <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-md text-xs font-bold">Pendiente</span>,
     'APPROVED': <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-bold">Aprobado / En camino</span>,
     'DELIVERED': <span className="px-2 py-1 bg-green-100 text-green-700 rounded-md text-xs font-bold">Recibido</span>,
+    'REJECTED': <span className="px-2 py-1 bg-red-100 text-red-700 rounded-md text-xs font-bold">Rechazado</span>,
+    'IN_TRANSIT': <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-md text-xs font-bold">En Tránsito</span>,
   };
 
   return (
@@ -143,6 +172,7 @@ export default function Pedidos() {
                   <tr>
                     <th className="px-6 py-4">ID Pedido</th>
                     <th className="px-6 py-4">Fecha</th>
+                    <th className="px-6 py-4">Sede Destino</th>
                     <th className="px-6 py-4">Creado Por</th>
                     <th className="px-6 py-4">Estado</th>
                     <th className="px-6 py-4">Artículos</th>
@@ -151,11 +181,12 @@ export default function Pedidos() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {getFilteredOrders().length === 0 ? (
-                    <tr><td colSpan="6" className="text-center py-8">No hay pedidos aquí.</td></tr>
+                    <tr><td colSpan="8" className="text-center py-8">No hay pedidos aquí.</td></tr>
                   ) : getFilteredOrders().map(o => (
                     <tr key={o.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 font-bold">#{o.id}</td>
                       <td className="px-6 py-4">{new Date(o.created_at).toLocaleString()}</td>
+                      <td className="px-6 py-4 font-medium text-slate-700">{o.branch_name || "Sin Sede"}</td>
                       <td className="px-6 py-4">{o.created_by_name}</td>
                       <td className="px-6 py-4">{statusTags[o.status] || o.status}</td>
                       <td className="px-6 py-4">
@@ -167,9 +198,12 @@ export default function Pedidos() {
                       </td>
                       <td className="px-6 py-4 text-right space-x-2">
                         {o.status === "PENDING_APPROVAL" && (role === "ADMIN" || role === "JEFE_INVENTARIO") && (
-                          <button onClick={() => handleApprove(o.id)} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-xs font-bold transition-colors">Aprobar</button>
+                          <>
+                            <button onClick={() => handleApprove(o.id)} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-xs font-bold transition-colors">Aceptar</button>
+                            <button onClick={() => handleReject(o.id)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-xs font-bold transition-colors">Denegar</button>
+                          </>
                         )}
-                        {o.status === "APPROVED" && (role === "ADMIN" || role === "JEFE_INVENTARIO" || isBodega) && (
+                        {(o.status === "APPROVED" || o.status === "IN_TRANSIT") && (role === "ADMIN" || role === "JEFE_INVENTARIO" || isBodega) && (
                           <button onClick={() => openDeliverModal(o)} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-xs font-bold transition-colors">Recibir Mercancía</button>
                         )}
                       </td>
@@ -188,6 +222,21 @@ export default function Pedidos() {
           <div className="bg-white p-8 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-6 text-slate-800">Crear Nuevo Pedido</h2>
             <form onSubmit={handleCreateOrder}>
+              
+              <div className="mb-6 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <label className="block text-sm font-bold text-blue-800 mb-2">Seleccionar Sede de Destino</label>
+                <select 
+                  required 
+                  value={selectedBranch} 
+                  onChange={(e) => setSelectedBranch(e.target.value)}
+                  className="w-full border border-blue-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Sede...</option>
+                  {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+                <p className="text-[10px] text-blue-600 mt-1">El stock se sumará automáticamente a esta sede al recibir el pedido.</p>
+              </div>
+
               {newOrderItems.map((item, index) => (
                 <div key={index} className="flex gap-4 mb-3 items-end">
                   <div className="flex-1">
@@ -227,12 +276,22 @@ export default function Pedidos() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white p-8 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-2 text-slate-800">Recepción de Pedido #{selectedOrder.id}</h2>
-            <p className="text-sm text-slate-500 mb-6">Confirme las cantidades reales que llegaron con el proveedor. Al confirmar, los números ingresarán automáticamente al Stock Disponible.</p>
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-6">
+                <p className="text-sm text-yellow-800">
+                    <strong>Sede de Destino:</strong> {selectedOrder.branch_name}
+                </p>
+                <p className="text-xs text-yellow-700 mt-1">Si la cantidad recibida es menor a la solicitada, el sistema marcará el pedido con las cantidades reales.</p>
+            </div>
             
             <form onSubmit={handleDeliverOrder}>
               {deliveryItems.map((item, index) => (
                 <div key={item.id} className="flex items-center gap-4 mb-4 p-3 bg-slate-50 rounded-lg">
-                  <div className="flex-1 font-medium">{item.product_name}</div>
+                  <div className="flex-1">
+                      <div className="font-medium">{item.product_name}</div>
+                      {item.received_quantity < item.requested_quantity && (
+                          <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">INCOMPLETO</span>
+                      )}
+                  </div>
                   <div className="text-sm text-slate-500 w-24">Pedido: {item.requested_quantity}</div>
                   <div className="w-24">
                     <label className="block text-xs text-slate-500 mb-1">Recibido (Cant)</label>
@@ -240,14 +299,14 @@ export default function Pedidos() {
                       const newItems = [...deliveryItems];
                       newItems[index].received_quantity = e.target.value;
                       setDeliveryItems(newItems);
-                    }} className="w-full border rounded-lg p-1.5 outline-none font-bold text-blue-700" />
+                    }} className={`w-full border rounded-lg p-1.5 outline-none font-bold ${item.received_quantity < item.requested_quantity ? 'text-red-600 border-red-300' : 'text-blue-700'}`} />
                   </div>
                 </div>
               ))}
-              <div className="text-xs text-blue-600 mt-2 mb-6">¿Llegaron con otro precio? Modifica la ficha del producto desde el Menú de Inventario.</div>
+              <div className="text-xs text-blue-600 mt-2 mb-6 font-medium italic">Al confirmar, el stock se sumará de inmediato a la sede "{selectedOrder.branch_name}".</div>
               <div className="flex justify-end gap-3 mt-4 border-t pt-4">
                 <button type="button" onClick={() => setShowDeliverModal(false)} className="px-4 py-2 border rounded-lg text-slate-700">Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700">Confirmar Llegada de Camión</button>
+                <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700">Confirmar Recepción</button>
               </div>
             </form>
           </div>

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Product, Inventory, StockMovement, Order, OrderItem, Sale, SaleItem
+from .models import Category, Product, Inventory, StockMovement, Order, OrderItem, Sale, SaleItem, Provider, InventoryEntry
 from users.serializers import UserSerializer
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -8,8 +8,16 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ('created_at', 'updated_at', 'company')
 
+class ProviderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Provider
+        fields = '__all__'
+        read_only_fields = ('created_at', 'updated_at', 'company')
+
 class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.ReadOnlyField(source='category.name')
+    fecha_estimada_fin_vida = serializers.ReadOnlyField()
+    providers_details = ProviderSerializer(source='providers', many=True, read_only=True)
     
     class Meta:
         model = Product
@@ -19,7 +27,10 @@ class ProductSerializer(serializers.ModelSerializer):
 class InventorySerializer(serializers.ModelSerializer):
     product_name = serializers.ReadOnlyField(source='product.name')
     product_sku = serializers.ReadOnlyField(source='product.sku')
+    product_image = serializers.ImageField(source='product.image', read_only=True)
+    product_description = serializers.ReadOnlyField(source='product.description')
     branch_name = serializers.ReadOnlyField(source='branch.name')
+    providers_details = ProviderSerializer(source='product.providers', many=True, read_only=True)
     
     class Meta:
         model = Inventory
@@ -78,3 +89,14 @@ class SaleSerializer(serializers.ModelSerializer):
         model = Sale
         fields = '__all__'
         read_only_fields = ('branch', 'user', 'date', 'status', 'total')
+
+class InventoryEntrySerializer(serializers.ModelSerializer):
+    product_name = serializers.ReadOnlyField(source='product.name')
+    provider_name = serializers.ReadOnlyField(source='provider.name')
+    user_name = serializers.ReadOnlyField(source='user.first_name')
+    branch_name = serializers.ReadOnlyField(source='branch.name')
+
+    class Meta:
+        model = InventoryEntry
+        fields = '__all__'
+        read_only_fields = ('company', 'user', 'date')

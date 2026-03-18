@@ -2,8 +2,8 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import Category, Product, Inventory, StockMovement, Order, OrderItem, Sale, SaleItem
-from .serializers import CategorySerializer, ProductSerializer, InventorySerializer, StockMovementSerializer, OrderSerializer, OrderItemSerializer, SaleSerializer, SaleItemSerializer
+from .models import Category, Product, Inventory, StockMovement, Order, OrderItem, Sale, SaleItem, Provider, InventoryEntry
+from .serializers import CategorySerializer, ProductSerializer, InventorySerializer, StockMovementSerializer, OrderSerializer, OrderItemSerializer, SaleSerializer, SaleItemSerializer, ProviderSerializer, InventoryEntrySerializer
 from .permissions import IsInventoryManagerOrReadOnly
 
 class BaseInventoryViewSet(viewsets.ModelViewSet):
@@ -36,7 +36,19 @@ class CategoryViewSet(BaseInventoryViewSet):
     def perform_create(self, serializer):
         company_id = self.request.data.get('company')
         company = self.request.user.company
-        if company_id and (self.request.user.is_staff or getattr(request.user, 'is_admin', False)):
+        if company_id and (self.request.user.is_staff or getattr(self.request.user, 'is_admin', False)):
+            serializer.save(company_id=company_id)
+        else:
+            serializer.save(company=company)
+
+class ProviderViewSet(BaseInventoryViewSet):
+    queryset = Provider.objects.all()
+    serializer_class = ProviderSerializer
+
+    def perform_create(self, serializer):
+        company_id = self.request.data.get('company')
+        company = self.request.user.company
+        if company_id and (self.request.user.is_staff or getattr(self.request.user, 'is_admin', False)):
             serializer.save(company_id=company_id)
         else:
             serializer.save(company=company)
@@ -68,6 +80,66 @@ class ProductViewSet(BaseInventoryViewSet):
         branches = Branch.objects.filter(company=product.company)
         for branch in branches:
             Inventory.objects.create(product=product, branch=branch)
+
+    @action(detail=False, methods=['get'])
+    def dashboard_alerts(self, request):
+        user = request.user
+        company = user.company
+        
+        # Build base queryset for effective company/branch
+        qs = Product.objects.all()
+        if company:
+            qs = qs.filter(company=company)
+            
+        from datetime import datetime
+        now = datetime.now().date()
+        
+        # 1. Cercanos a fin de vida
+        end_of_life_products = []
+        for p in qs:
+            if p.fecha_estimada_fin_vida:
+                # Si falta menos de 3 meses
+                delta = (p.fecha_estimada_fin_vida.date() - now).days
+                if delta >= 0 and delta <= 90:
+                    end_of_life_products.append(ProductSerializer(p).data)
+
+        # 2. Stock Muerto (sin salidas en los últimos 3 meses)
+        # 3. Bajo Stock
+        inv_qs = Inventory.objects.all()
+        if company:
+            if getattr(user, 'branch', None):
+                inv_qs = inv_qs.filter(branch=user.branch)
+            else:
+                inv_qs = inv_qs.filter(branch__company=company)
+                
+        bajo_stock = []
+        stock_muerto = []
+        
+        from dateutil.relativedelta import relativedelta
+        three_months_ago = datetime.now() - relativedelta(months=3)
+        
+        for inv in inv_qs:
+            if inv.quantity > 0 and inv.quantity <= inv.min_stock:
+                bajo_stock.append(InventorySerializer(inv).data)
+                
+            # Verifica salidas
+            recent_exits = StockMovement.objects.filter(
+                inventory=inv, 
+                movement_type='EXIT',
+                date__gte=three_months_ago
+            ).exists()
+            
+            if inv.quantity > 0 and not recent_exits:
+                stock_muerto.append({
+                    "inventory": InventorySerializer(inv).data,
+                    "reason": "Sin salidas en últimos 3 meses"
+                })
+
+        return Response({
+            "cercanos_fin_vida": end_of_life_products,
+            "bajo_stock": bajo_stock,
+            "stock_muerto": stock_muerto
+        })
 
 class InventoryViewSet(BaseInventoryViewSet):
     queryset = Inventory.objects.all()
@@ -299,4 +371,45 @@ class SaleViewSet(BaseInventoryViewSet):
         
         sale.total = total
         sale.save()
+
+class InventoryEntryViewSet(BaseInventoryViewSet):
+    queryset = InventoryEntry.objects.all()
+    serializer_class = InventoryEntrySerializer
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        company = user.company
+        branch = user.branch
+        if not branch:
+            branch_id = self.request.data.get('branch')
+            if branch_id:
+                from companies.models import Branch
+                if user.is_staff or getattr(user, 'role', None) == 'ADMIN':
+                    branch = Branch.objects.filter(id=branch_id).first()
+                else:
+                    branch = Branch.objects.filter(id=branch_id, company=user.company).first()
+
+        company_id = self.request.data.get('company')
+        effective_company_id = company_id if (company_id and (user.is_staff or getattr(user, 'is_admin', False))) else (company.id if company else None)
+
+        entry = serializer.save(user=user, company_id=effective_company_id, branch=branch)
+        
+        # update inventory
+        try:
+            inventory = Inventory.objects.get(product=entry.product, branch=branch)
+            inventory.quantity += entry.quantity
+            inventory.save()
+            
+            # create movement
+            StockMovement.objects.create(
+                inventory=inventory,
+                company=inventory.product.company,
+                branch=branch,
+                user=user,
+                movement_type='ENTRY',
+                quantity=entry.quantity,
+                notes=entry.notes or f"Entrada vinculada al proveedor {entry.provider.name if entry.provider else 'N/A'}"
+            )
+        except Inventory.DoesNotExist:
+            pass
 

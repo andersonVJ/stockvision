@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import { getOrders, createOrder, approveOrder, deliverOrder, rejectOrder } from "../services/orderService";
-import { getProducts, getBranches } from "../services/inventoryService";
+import { getProducts, getBranches, getProviders } from "../services/inventoryService";
 
 export default function Pedidos() {
   const [user, setUser] = useState({});
@@ -9,6 +9,7 @@ export default function Pedidos() {
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -25,14 +26,16 @@ export default function Pedidos() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [ordersData, productsData, branchesData] = await Promise.all([
+      const [ordersData, productsData, branchesData, providersData] = await Promise.all([
         getOrders(),
         getProducts(),
-        getBranches()
+        getBranches(),
+        getProviders()
       ]);
       setOrders(ordersData);
       setProducts(productsData);
       setBranches(branchesData);
+      setProviders(providersData);
     } catch (error) {
       console.error("Error loading orders data", error);
     }
@@ -55,6 +58,7 @@ export default function Pedidos() {
   // CREATE ORDER FORM
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState("");
+  const [selectedProvider, setSelectedProvider] = useState("");
   const [newOrderItems, setNewOrderItems] = useState([{ product: "", requested_quantity: 1 }]);
 
   const handleAddOrderItem = () => {
@@ -237,8 +241,28 @@ export default function Pedidos() {
                 <p className="text-[10px] text-blue-600 mt-1">El stock se sumará automáticamente a esta sede al recibir el pedido.</p>
               </div>
 
-              {newOrderItems.map((item, index) => (
-                <div key={index} className="flex gap-4 mb-3 items-end">
+              <div className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <label className="block text-sm font-bold text-slate-800 mb-2">Seleccionar Proveedor (Opcional, filtra productos)</label>
+                <select 
+                  value={selectedProvider} 
+                  onChange={(e) => {
+                    setSelectedProvider(e.target.value);
+                    setNewOrderItems([{ product: "", requested_quantity: 1 }]);
+                  }}
+                  className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Todos los productos...</option>
+                  {providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+
+              {newOrderItems.map((item, index) => {
+                const availableProducts = selectedProvider 
+                   ? products.filter(p => p.providers.includes(parseInt(selectedProvider)))
+                   : products;
+                
+                return (
+                 <div key={index} className="flex gap-4 mb-3 items-end">
                   <div className="flex-1">
                     <label className="block text-xs text-slate-500 mb-1">Producto</label>
                     <select required value={item.product} onChange={(e) => {
@@ -247,7 +271,7 @@ export default function Pedidos() {
                       setNewOrderItems(newItems);
                     }} className="w-full border rounded-lg p-2 outline-none">
                       <option value="">Seleccione...</option>
-                      {products.map(p => <option key={p.id} value={p.id}>{p.sku} - {p.name}</option>)}
+                      {availableProducts.map(p => <option key={p.id} value={p.id}>{p.sku} - {p.name}</option>)}
                     </select>
                   </div>
                   <div className="w-32">
@@ -259,7 +283,8 @@ export default function Pedidos() {
                     }} className="w-full border rounded-lg p-2 outline-none" />
                   </div>
                 </div>
-              ))}
+               );
+              })}
               <button type="button" onClick={handleAddOrderItem} className="text-blue-600 text-sm font-bold mb-6 hover:underline">+ Añadir otro producto</button>
               
               <div className="flex justify-end gap-3 mt-4 border-t pt-4">

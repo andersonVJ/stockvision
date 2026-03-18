@@ -12,6 +12,7 @@ import Pedidos from "./pages/Pedidos";
 import GestionSedes from "./pages/GestionSedes";
 import PuntoDeVenta from "./pages/PuntoDeVenta";
 import HistorialVentas from "./pages/HistorialVentas";
+import GestionProveedores from "./pages/GestionProveedores";
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         <Route path="/inventory" element={<Inventario />} />
         <Route path="/orders" element={<Pedidos />} />
         <Route path="/sedes" element={<GestionSedes />} />
+        <Route path="/proveedores" element={<GestionProveedores />} />
         <Route path="/pos" element={<PuntoDeVenta />} />
         <Route path="/ventas" element={<HistorialVentas />} />
       </Routes>

@@ -30,6 +30,16 @@ export const createProduct = async (data) => {
     return res.data;
 };
 
+export const updateProduct = async (id, data) => {
+    const res = await axios.put(`http://127.0.0.1:8000/api/inventory/products/${id}/`, data, getAuthHeaders());
+    return res.data;
+};
+
+export const deleteProduct = async (id) => {
+    const res = await axios.delete(`http://127.0.0.1:8000/api/inventory/products/${id}/`, getAuthHeaders());
+    return res.data;
+};
+
 export const getInventories = async () => {
     const res = await axios.get("http://127.0.0.1:8000/api/inventory/inventories/", getAuthHeaders());
     return res.data;
@@ -79,3 +89,42 @@ export const createSale = async (data) => {
     const res = await axios.post("http://127.0.0.1:8000/api/inventory/sales/", data, getAuthHeaders());
     return res.data;
 };
+
+// --- NEW PROVIDERS API ---
+export const getProviders = async () => {
+    const res = await axios.get("http://127.0.0.1:8000/api/inventory/providers/", getAuthHeaders());
+    return res.data;
+};
+
+export const createProvider = async (data) => {
+    const res = await axios.post("http://127.0.0.1:8000/api/inventory/providers/", data, getAuthHeaders());
+    return res.data;
+};
+
+export const updateProvider = async (id, data) => {
+    const res = await axios.put(`http://127.0.0.1:8000/api/inventory/providers/${id}/`, data, getAuthHeaders());
+    return res.data;
+};
+
+export const deleteProvider = async (id) => {
+    const res = await axios.delete(`http://127.0.0.1:8000/api/inventory/providers/${id}/`, getAuthHeaders());
+    return res.data;
+};
+
+// --- NEW ENTRIES API ---
+export const getEntries = async () => {
+    const res = await axios.get("http://127.0.0.1:8000/api/inventory/entries/", getAuthHeaders());
+    return res.data;
+};
+
+export const createEntry = async (data) => {
+    const res = await axios.post("http://127.0.0.1:8000/api/inventory/entries/", data, getAuthHeaders());
+    return res.data;
+};
+
+// --- DASHBOARD ALERTS ---
+export const getDashboardAlerts = async () => {
+    const res = await axios.get("http://127.0.0.1:8000/api/inventory/products/dashboard_alerts/", getAuthHeaders());
+    return res.data;
+};
+

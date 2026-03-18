@@ -5,7 +5,21 @@ from django.db import models
 class Category(models.Model):
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True, null=True)
+    vida_util_meses = models.IntegerField(default=0, help_text="Vida útil estimada en meses")
     company = models.ForeignKey('companies.Company', on_delete=models.CASCADE, related_name='categories')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.company.name}"
+
+class Provider(models.Model):
+    name = models.CharField(max_length=200)
+    contact = models.CharField(max_length=200, blank=True, null=True)
+    phone = models.CharField(max_length=50, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
+    company = models.ForeignKey('companies.Company', on_delete=models.CASCADE, related_name='providers')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -15,17 +29,27 @@ class Category(models.Model):
 class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='products')
     company = models.ForeignKey('companies.Company', on_delete=models.CASCADE, related_name='products')
+    providers = models.ManyToManyField(Provider, related_name='products', blank=True)
     name = models.CharField(max_length=200)
     sku = models.CharField(max_length=100, help_text="Stock Keeping Unit")
     barcode = models.CharField(max_length=100, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    image = models.ImageField(upload_to='products/', null=True, blank=True)
+    fecha_ingreso = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ('sku', 'company')
+
+    @property
+    def fecha_estimada_fin_vida(self):
+        if self.fecha_ingreso and self.category and self.category.vida_util_meses:
+            from datetime import timedelta
+            return self.fecha_ingreso + timedelta(days=self.category.vida_util_meses * 30)
+        return None
 
     def __str__(self):
         return f"[{self.sku}] {self.name}"
@@ -125,3 +149,17 @@ class SaleItem(models.Model):
     
     def __str__(self):
         return f"{self.quantity}x {self.product.name} (Sale #{self.sale.id})"
+
+class InventoryEntry(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='entries')
+    provider = models.ForeignKey(Provider, on_delete=models.SET_NULL, null=True, blank=True, related_name='entries')
+    quantity = models.IntegerField()
+    date = models.DateTimeField(auto_now_add=True)
+    company = models.ForeignKey('companies.Company', on_delete=models.CASCADE)
+    branch = models.ForeignKey('companies.Branch', on_delete=models.CASCADE, null=True, blank=True)
+    notes = models.TextField(blank=True, null=True)
+    
+    user = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True)
+
+    def __str__(self):
+        return f"Entry of {self.quantity} for {self.product.name} on {self.date}"

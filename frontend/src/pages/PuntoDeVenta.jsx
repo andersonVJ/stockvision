@@ -112,6 +112,13 @@ export default function PuntoDeVenta() {
                 {inventories.map(inv => (
                   <div key={inv.id} onClick={() => addToCart(inv)} className="p-4 border border-slate-200 rounded-xl hover:border-blue-500 hover:shadow-md cursor-pointer transition-all flex flex-col justify-between h-32 bg-white group">
                     <div>
+                      <div className="h-20 w-full mb-3 rounded-md overflow-hidden bg-slate-100 flex items-center justify-center">
+                        {inv.product_image ? (
+                           <img src={inv.product_image} alt={inv.product_name} className="w-full h-full object-contain p-2 mix-blend-multiply" />
+                        ) : (
+                           <span className="text-slate-300 font-bold text-xs">Sin Foto</span>
+                        )}
+                      </div>
                       <h3 className="font-bold text-slate-800 line-clamp-2 leading-tight group-hover:text-blue-600 transition-colors">{inv.product_name}</h3>
                       <p className="text-[10px] text-slate-400 font-mono mt-1">{inv.product_sku}</p>
                       {user.role === 'ADMIN' && <p className="text-[10px] uppercase font-bold text-indigo-500 mt-1">{inv.branch_name}</p>}

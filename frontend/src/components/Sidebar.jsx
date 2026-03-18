@@ -12,7 +12,8 @@ import {
     Users,
     Building2,
     Store,
-    Receipt
+    Receipt,
+    Briefcase
 } from "lucide-react";
 
 import Logo from "./Logo";
@@ -40,6 +41,7 @@ export default function Sidebar() {
         { name: "Inicio", path: "/inicio", icon: <Home className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO"] },
         { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO"] },
         { name: "Sedes", path: "/sedes", icon: <Building2 className="w-[18px] h-[18px]" />, roles: ["ADMIN"] },
+        { name: "Proveedores", path: "/proveedores", icon: <Briefcase className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO"] },
         { name: "Inventario", path: "/inventory", icon: <Package className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO"] },
         { name: "Punto de Venta", path: "/pos", icon: <Store className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO"] },
         { name: "Historial de Ventas", path: "/ventas", icon: <Receipt className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO"] },
@@ -54,7 +56,7 @@ export default function Sidebar() {
     const isActive = (path) => location.pathname === path;
 
     return (
-        <div className="flex flex-col h-screen w-64 bg-white border-r border-slate-200">
+        <div className="flex flex-col h-screen sticky top-0 w-64 shrink-0 bg-white border-r border-slate-200">
 
             {/* Head / Logo */}
             <div className="flex items-center p-6 h-24">

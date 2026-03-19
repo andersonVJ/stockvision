@@ -62,8 +62,15 @@ class BranchViewSet(viewsets.ModelViewSet):
         return Branch.objects.none()
 
     def perform_create(self, serializer):
-        company = self.request.user.company
-        branch = serializer.save(company=company)
+        user = self.request.user
+        company_id = self.request.data.get('company')
+        
+        if company_id and (user.is_staff or getattr(user, "role", None) == "ADMIN"):
+            branch = serializer.save(company_id=company_id)
+            company = branch.company
+        else:
+            company = user.company
+            branch = serializer.save(company=company)
         
         # Al crear Sede, crear Inventory para todos los Productos de la Empresa
         from inventory.models import Product, Inventory

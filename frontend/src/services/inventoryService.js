@@ -60,6 +60,11 @@ export const createMovement = async (data) => {
     return res.data;
 };
 
+export const getCompanies = async () => {
+    const res = await axios.get("http://127.0.0.1:8000/api/companies/", getAuthHeaders());
+    return res.data;
+};
+
 export const getBranches = async () => {
     const res = await axios.get("http://127.0.0.1:8000/api/companies/branches/", getAuthHeaders());
     return res.data;

@@ -16,6 +16,7 @@ export default function PuntoDeVenta() {
   const [invoiceType, setInvoiceType] = useState('FISICA');
   const [clientData, setClientData] = useState({ id_document: '', name: '', phone: '', email: '' });
   const [clientSearching, setClientSearching] = useState(false);
+  const [selectedBranchId, setSelectedBranchId] = useState("");
   
   const componentRef = useRef();
 
@@ -165,12 +166,32 @@ export default function PuntoDeVenta() {
           
           {/* CATALOGO */}
           <div className="flex-[2] bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col h-[calc(100vh-4rem)]">
-            <h1 className="text-2xl font-bold text-slate-800 mb-6">Punto de Venta</h1>
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold text-slate-800">Punto de Venta</h1>
+              
+              {user.role === 'ADMIN' && (
+                <select
+                  value={selectedBranchId}
+                  onChange={e => setSelectedBranchId(e.target.value)}
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Todos los Puntos de Venta</option>
+                  {Array.from(new Set(inventories.map(inv => inv.branch_name)))
+                    .map(name => inventories.find(inv => inv.branch_name === name))
+                    .map(inv => (
+                      <option key={inv.branch} value={inv.branch}>{inv.branch_name}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+
             {loading ? (
               <p className="text-slate-500 text-center py-10">Cargando catálogo...</p>
             ) : (
               <div className="grid grid-cols-3 gap-4 overflow-y-auto flex-1 content-start pr-2">
-                {inventories.map(inv => {
+                {inventories
+                  .filter(inv => selectedBranchId ? String(inv.branch) === String(selectedBranchId) : true)
+                  .map(inv => {
                   const productDetail = products.find(p => p.sku === inv.product_sku) || { price: 0 };
                   const isHigh = inv.quantity > 5;
                   const isLow = inv.quantity <= 0;

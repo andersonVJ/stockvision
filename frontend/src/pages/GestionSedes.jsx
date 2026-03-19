@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
-import { getBranches, createBranch, updateBranch, deleteBranch } from "../services/inventoryService";
+import { getBranches, createBranch, updateBranch, deleteBranch, getCompanies } from "../services/inventoryService";
 
 export default function GestionSedes() {
   const [user, setUser] = useState({});
@@ -8,9 +8,12 @@ export default function GestionSedes() {
   const [loading, setLoading] = useState(true);
   
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ name: "", address: "" });
+  const [formData, setFormData] = useState({ name: "", address: "", company: "" });
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  
+  const [companies, setCompanies] = useState([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState("");
 
   useEffect(() => {
     try {
@@ -22,6 +25,7 @@ export default function GestionSedes() {
       console.error(e);
     }
     loadBranches();
+    loadCompanies();
   }, []);
 
   const loadBranches = async () => {
@@ -33,6 +37,15 @@ export default function GestionSedes() {
       console.error(err);
     }
     setLoading(false);
+  };
+
+  const loadCompanies = async () => {
+    try {
+      const data = await getCompanies();
+      setCompanies(data);
+    } catch (err) {
+      console.error("Error al cargar empresas", err);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -48,15 +61,16 @@ export default function GestionSedes() {
       setShowModal(false);
       setIsEditing(false);
       setEditingId(null);
-      setFormData({ name: "", address: "" });
+      setFormData({ name: "", address: "", company: "" });
       loadBranches();
     } catch (err) {
+      console.error(err.response?.data || err);
       alert(isEditing ? "Error al actualizar la sede" : "Error al crear la sede");
     }
   };
 
   const handleEditBranch = (branch) => {
-    setFormData({ name: branch.name, address: branch.address || "" });
+    setFormData({ name: branch.name, address: branch.address || "", company: branch.company || "" });
     setEditingId(branch.id);
     setIsEditing(true);
     setShowModal(true);
@@ -79,24 +93,39 @@ export default function GestionSedes() {
       <Sidebar />
       <div className="flex-1 p-8">
         <div className="max-w-4xl mx-auto relative">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold text-slate-800">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8">
+            <h1 className="text-3xl font-bold text-slate-800 w-full sm:w-auto text-left">
               Gestión de Sedes (Bodegas)
             </h1>
 
-            {user.role === "ADMIN" && (
-              <button
-                onClick={() => {
-                  setFormData({ name: "", address: "" });
-                  setIsEditing(false);
-                  setEditingId(null);
-                  setShowModal(true);
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-              >
-                + Nueva Sede
-              </button>
-            )}
+            <div className="flex gap-4 w-full sm:w-auto">
+              {(user.role === "ADMIN" || companies.length > 0) && (
+                <select
+                  value={selectedCompanyId}
+                  onChange={(e) => setSelectedCompanyId(e.target.value)}
+                  className="bg-white border border-slate-300 rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 w-full sm:w-auto"
+                >
+                  <option value="">Todas las Empresas</option>
+                  {companies.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              )}
+
+              {user.role === "ADMIN" && (
+                <button
+                  onClick={() => {
+                    setFormData({ name: "", address: "", company: "" });
+                    setIsEditing(false);
+                    setEditingId(null);
+                    setShowModal(true);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap"
+                >
+                  + Nueva Sede
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -116,7 +145,9 @@ export default function GestionSedes() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {branches.map(b => (
+                  {branches
+                    .filter(b => selectedCompanyId ? String(b.company) === String(selectedCompanyId) || b.company_name === companies.find(c => String(c.id) === String(selectedCompanyId))?.name : true)
+                    .map(b => (
                     <tr key={b.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 font-bold text-slate-800">{b.name}</td>
                       <td className="px-6 py-4">{b.address || "-"}</td>
@@ -153,9 +184,18 @@ export default function GestionSedes() {
             <h2 className="text-2xl font-bold mb-6 text-slate-800">{isEditing ? "Editar Sede" : "Registrar Sede"}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre *</label>
                 <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Sede Norte" />
               </div>
+              {user.role === 'ADMIN' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Empresa a la que pertenece *</label>
+                  <select required value={formData.company} onChange={e=>setFormData({...formData, company: e.target.value})} className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500">
+                     <option value="">Seleccione una Empresa</option>
+                     {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Dirección (Opcional)</label>
                 <input type="text" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Calle Principal 123" />

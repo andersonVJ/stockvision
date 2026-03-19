@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
-import { getProviders, createProvider, updateProvider, deleteProvider } from "../services/inventoryService";
-import { Plus, Edit2, Trash2, Building, Mail, Phone, MapPin, User as UserIcon } from "lucide-react";
+import { getProviders, createProvider, updateProvider, deleteProvider, getCompanies, getInventories } from "../services/inventoryService";
+import { Plus, Edit2, Trash2, Building, Mail, Phone, MapPin, User as UserIcon, Package } from "lucide-react";
 
 export default function GestionProveedores() {
   const [user, setUser] = useState({});
@@ -11,7 +11,12 @@ export default function GestionProveedores() {
   // Modal State
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ name: "", contact: "", phone: "", email: "", address: "" });
+  const [formData, setFormData] = useState({ name: "", contact: "", phone: "", email: "", address: "", company: "" });
+
+  const [companies, setCompanies] = useState([]);
+  const [showMerchandiseModal, setShowMerchandiseModal] = useState(false);
+  const [selectedProviderName, setSelectedProviderName] = useState("");
+  const [providerInventories, setProviderInventories] = useState([]);
 
   useEffect(() => {
     try {
@@ -23,7 +28,14 @@ export default function GestionProveedores() {
       console.error(e);
     }
     loadProviders();
+    loadCompanies();
   }, []);
+
+  const loadCompanies = async () => {
+    try {
+      setCompanies(await getCompanies());
+    } catch (err) {}
+  };
 
   const loadProviders = async () => {
     setLoading(true);
@@ -44,13 +56,29 @@ export default function GestionProveedores() {
         contact: provider.contact || "", 
         phone: provider.phone || "", 
         email: provider.email || "", 
-        address: provider.address || "" 
+        address: provider.address || "",
+        company: provider.company || "" 
       });
     } else {
       setEditingId(null);
-      setFormData({ name: "", contact: "", phone: "", email: "", address: "" });
+      setFormData({ name: "", contact: "", phone: "", email: "", address: "", company: "" });
     }
     setShowModal(true);
+  };
+  
+  const handleViewMerchandise = async (provider) => {
+    setSelectedProviderName(provider.name);
+    setShowMerchandiseModal(true);
+    try {
+       const allInventories = await getInventories();
+       const filtered = allInventories.filter(inv => {
+          return inv.providers_details && inv.providers_details.some(p => p.id === provider.id);
+       });
+       console.log(`Mercancía disponible de ${provider.name}:`, filtered);
+       setProviderInventories(filtered);
+    } catch(err) {
+       console.error("Error cargando inventario", err);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -64,7 +92,8 @@ export default function GestionProveedores() {
       setShowModal(false);
       loadProviders();
     } catch (err) {
-      alert("Error al guardar proveedor");
+      console.error(err.response?.data || err);
+      alert("Error al guardar proveedor: " + JSON.stringify(err.response?.data || err.message));
     }
   };
 
@@ -121,6 +150,9 @@ export default function GestionProveedores() {
                         <h3 className="text-lg font-bold text-slate-800 line-clamp-2 leading-tight">{p.name}</h3>
                         {(user.role === 'ADMIN' || user.role === 'JEFE_INVENTARIO') && (
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => handleViewMerchandise(p)} className="p-1.5 text-slate-400 hover:text-green-600 rounded bg-slate-50 hover:bg-green-50 mr-1" title="Ver Mercancía">
+                              <Package className="w-4 h-4" />
+                            </button>
                             <button onClick={() => handleOpenModal(p)} className="p-1.5 text-slate-400 hover:text-blue-600 rounded bg-slate-50 hover:bg-blue-50">
                               <Edit2 className="w-4 h-4" />
                             </button>
@@ -175,6 +207,15 @@ export default function GestionProveedores() {
                 <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Razón Social / Nombre *</label>
                 <input required type="text" value={formData.name} onChange={e=>setFormData({...formData, name: e.target.value})} className="w-full border border-slate-200 p-2.5 rounded-xl bg-slate-50 outline-none focus:border-blue-500 focus:bg-white transition-colors" />
               </div>
+              {user.role === 'ADMIN' && (
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Empresa a la que pertenece *</label>
+                  <select required value={formData.company} onChange={e=>setFormData({...formData, company: e.target.value})} className="w-full border border-slate-200 p-2.5 rounded-xl bg-slate-50 outline-none focus:border-blue-500 focus:bg-white transition-colors">
+                     <option value="">Seleccione una Empresa</option>
+                     {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Contacto</label>
                 <input type="text" value={formData.contact} onChange={e=>setFormData({...formData, contact: e.target.value})} className="w-full border border-slate-200 p-2.5 rounded-xl bg-slate-50 outline-none focus:border-blue-500 focus:bg-white transition-colors" />
@@ -200,6 +241,54 @@ export default function GestionProveedores() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL MERCHANDISE */}
+      {showMerchandiseModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl flex flex-col max-h-[90vh]">
+             <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                 <h2 className="font-bold text-xl text-slate-800">
+                   Mercancía de {selectedProviderName}
+                 </h2>
+                 <button onClick={() => setShowMerchandiseModal(false)} className="text-slate-400 hover:text-slate-600 font-bold">X</button>
+             </div>
+             
+             <div className="p-6 overflow-y-auto flex-1">
+                 {providerInventories.length === 0 ? (
+                    <p className="text-slate-500 text-center py-10">No hay mercancía disponible de este proveedor en ninguna sede.</p>
+                 ) : (
+                    <table className="w-full text-left text-sm text-slate-600">
+                      <thead className="bg-slate-50 border-b border-slate-100 text-slate-400 uppercase text-xs font-semibold">
+                        <tr>
+                          <th className="px-4 py-3">Producto</th>
+                          <th className="px-4 py-3">SKU</th>
+                          <th className="px-4 py-3">Sede (Bodega)</th>
+                          <th className="px-4 py-3 text-right">Cantidad Disponible</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {providerInventories.map(inv => (
+                          <tr key={inv.id} className="hover:bg-slate-50">
+                            <td className="px-4 py-3 font-bold text-slate-800">{inv.product_name}</td>
+                            <td className="px-4 py-3 text-slate-400">{inv.product_sku}</td>
+                            <td className="px-4 py-3">{inv.branch_name}</td>
+                            <td className="px-4 py-3 text-right">
+                               <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold text-xs">
+                                  {inv.quantity} uds
+                               </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                 )}
+             </div>
+             <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl text-xs text-slate-500 text-center">
+                 Los datos relacionales completos también se han impreso en la consola (F12).
+             </div>
           </div>
         </div>
       )}

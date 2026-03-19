@@ -94,4 +94,23 @@ El código en Backend está configurado mediante filtros silenciosos. El adminis
 
 ---
 
-> _**Desarrollado para resolver los nuevos retos logísticos implementando tecnologías avanzadas.**_
+## 👥 Creación Rápida de Usuarios de Prueba
+Para realizar pruebas exhaustivas de la plataforma (Roles, Permisos, Vistas y Sucursales), puedes generar automáticamente usuarios de todos los perfiles (`ADMIN`, `JEFE_INVENTARIO`, `EMPLEADO`, `VENDEDOR`) asignados a diferentes sedes ejecutando el siguiente comando:
+
+```bash
+python create_test_users.py
+```
+> **Credenciales por Defecto**: La contraseña para todos los usuarios generados será `12345`. (Ej. `admin_test_1`, `vend_test_1`, etc). Estos usuarios tendrán datos semilla para navegar por las pantallas correspondientes.
+
+---
+
+## ⚠️ Posibles Errores o Mejoras Pendientes por Corregir
+A continuación se listan las mejoras técnicas y operativas pendientes para futuras versiones:
+1. **Falta de paginación en el Punto de Venta**: Si el catálogo de inventario crece a miles de productos, el POS podría ralentizarse al intentar renderizar todas las imágenes y tarjetas de forma simultánea. Se requiere paginación o *infinite scroll*.
+2. **Control de Concurrencia en Ventas**: Si dos vendedores intentan vender la última unidad del mismo producto exactamente al mismo tiempo, el inventario podría quedar en números negativos si no se implementa un bloqueo estricto en la base de datos (`select_for_update`).
+3. **Gestión de Sesiones de Caja**: Actualmente no se manejan "Aperturas y Cierres de Caja" en el Punto de Venta. Todas las ventas entran de corrido según el usuario y la fecha.
+4. **Imágenes de Productos**: Las imágenes subidas por el Administrador no sufren compresión en el Backend, lo que podría consumir el ancho de banda y almacenamiento del servidor rápidamente.
+5. **Reportes Completos**: Faltan opciones nativas de exportación a Excel/PDF masivas de todo el historial financiero y control estricto de mermas.
+6. **Recuperación de Contraseña**: El endpoint para correos de recuperación fallará en ambiente de producción si no se configuran las variables de entorno de un proveedor SMTP real en `settings.py`.
+
+---

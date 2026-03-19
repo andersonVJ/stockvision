@@ -207,7 +207,7 @@ export default function Pedidos() {
                             <button onClick={() => handleReject(o.id)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-xs font-bold transition-colors">Denegar</button>
                           </>
                         )}
-                        {(o.status === "APPROVED" || o.status === "IN_TRANSIT") && (role === "ADMIN" || role === "JEFE_INVENTARIO" || isBodega) && (
+                        {(o.status === "APPROVED" || o.status === "IN_TRANSIT") && (role === "ADMIN" || role === "JEFE_INVENTARIO" || isBodega || role === "VENDEDOR") && (
                           <button onClick={() => openDeliverModal(o)} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-xs font-bold transition-colors">Recibir Mercancía</button>
                         )}
                       </td>

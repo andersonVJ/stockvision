@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Company, Branch
+from .models import Company, Branch, Client
 
 class CompanySerializer(serializers.ModelSerializer):
     class Meta:
@@ -14,3 +14,9 @@ class BranchSerializer(serializers.ModelSerializer):
         model = Branch
         fields = '__all__'
         read_only_fields = ('created_at', 'updated_at', 'company')
+
+class ClientSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Client
+        fields = '__all__'
+        read_only_fields = ('created_at', 'company')

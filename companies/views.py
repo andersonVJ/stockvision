@@ -15,8 +15,8 @@ from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth import get_user_model
 
-from .models import Company, PasswordResetToken, Branch
-from .serializers import CompanySerializer, BranchSerializer
+from .models import Company, PasswordResetToken, Branch, Client
+from .serializers import CompanySerializer, BranchSerializer, ClientSerializer
 
 
 User = get_user_model()
@@ -70,6 +70,29 @@ class BranchViewSet(viewsets.ModelViewSet):
         products = Product.objects.filter(company=company)
         for product in products:
             Inventory.objects.create(product=product, branch=branch)
+
+# ============================================
+# CLIENT VIEWSET
+# ============================================
+
+class ClientViewSet(viewsets.ModelViewSet):
+    serializer_class = ClientSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Client.objects.all()
+        if user.company:
+            queryset = queryset.filter(company=user.company)
+            
+        id_document = self.request.query_params.get('id_document')
+        if id_document:
+            queryset = queryset.filter(id_document=id_document)
+            
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(company=self.request.user.company)
 
 
 # ============================================

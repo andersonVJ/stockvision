@@ -43,3 +43,17 @@ class Branch(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.company.name})"
+
+class Client(models.Model):
+    id_document = models.CharField(max_length=50, verbose_name="Cédula/NIT")
+    name = models.CharField(max_length=200)
+    phone = models.CharField(max_length=50, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='clients')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('id_document', 'company')
+
+    def __str__(self):
+        return f"{self.name} - {self.id_document}"

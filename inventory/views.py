@@ -327,7 +327,25 @@ class SaleViewSet(BaseInventoryViewSet):
             raise ValidationError("No tienes una sede asignada para realizar ventas o no seleccionaste ninguna.")
             
         status = self.request.data.get('status', 'COMPLETED')
-        sale = serializer.save(branch=branch, user=user, status=status)
+        invoice_type = self.request.data.get('invoice_type', 'FISICA')
+        client_data = self.request.data.get('client_data')
+        client = None
+
+        if invoice_type == 'ELECTRONICA' and client_data:
+            id_document = client_data.get('id_document')
+            if id_document:
+                from companies.models import Client
+                client, created = Client.objects.update_or_create(
+                    id_document=id_document,
+                    company=branch.company,
+                    defaults={
+                        'name': client_data.get('name', ''),
+                        'phone': client_data.get('phone', ''),
+                        'email': client_data.get('email', '')
+                    }
+                )
+
+        sale = serializer.save(branch=branch, user=user, status=status, invoice_type=invoice_type, client=client)
         
         items_data = self.request.data.get('items', [])
         total = 0

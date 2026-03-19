@@ -84,6 +84,8 @@ class SaleSerializer(serializers.ModelSerializer):
     items = SaleItemSerializer(many=True, read_only=True)
     user_name = serializers.ReadOnlyField(source='user.first_name')
     branch_name = serializers.ReadOnlyField(source='branch.name')
+    client_document = serializers.ReadOnlyField(source='client.id_document')
+    client_name = serializers.ReadOnlyField(source='client.name')
 
     class Meta:
         model = Sale

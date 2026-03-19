@@ -128,3 +128,9 @@ export const getDashboardAlerts = async () => {
     return res.data;
 };
 
+// --- NEW CLIENTS API ---
+export const getClientByDocument = async (idDocument) => {
+    const res = await axios.get(`http://127.0.0.1:8000/api/companies/clients/?id_document=${idDocument}`, getAuthHeaders());
+    return res.data;
+};
+

@@ -100,7 +100,7 @@ export default function HistorialVentas() {
                           {sale.user_name}
                         </td>
                         <td className="p-4 font-bold text-slate-800">
-                          ${parseFloat(sale.total).toFixed(2)}
+                          {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits:0 }).format(parseFloat(sale.total))}
                         </td>
                         <td className="p-4 text-xs font-medium text-slate-500 max-w-[200px] truncate pr-6">
                             {sale.items?.length || 0} productos

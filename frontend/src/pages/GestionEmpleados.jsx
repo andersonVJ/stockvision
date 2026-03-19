@@ -397,7 +397,7 @@ export default function GestionEmpleados() {
                 />
               </div>
 
-              {user.role === "ADMIN" && (
+              {(user.role === "ADMIN" || user.role === "JEFE_INVENTARIO") && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
                     Rol
@@ -410,8 +410,13 @@ export default function GestionEmpleados() {
                     className="w-full border border-slate-300 rounded-lg py-2 px-3 focus:ring-2 focus:ring-blue-500 outline-none"
                   >
                     <option value="EMPLEADO">Empleado</option>
-                    <option value="JEFE_INVENTARIO">Jefe de Inventario</option>
-                    <option value="ADMIN">Administrador</option>
+                    <option value="VENDEDOR">Vendedor</option>
+                    {user.role === "ADMIN" && (
+                        <option value="JEFE_INVENTARIO">Jefe de Inventario</option>
+                    )}
+                    {user.role === "ADMIN" && (
+                        <option value="ADMIN">Administrador</option>
+                    )}
                   </select>
                 </div>
               )}

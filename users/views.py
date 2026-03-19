@@ -57,8 +57,8 @@ class EmployeeListCreateView(generics.ListCreateAPIView):
                 return User.objects.filter(company=user.company).order_by('-date_joined')
             return User.objects.all().order_by('-date_joined')
         elif user.is_jefe_inventario:
-            # Jefe solo puede ver EMPLEADO de su sede
-            return User.objects.filter(role=User.EMPLEADO, branch=user.branch).order_by('-date_joined')
+            # Jefe solo puede ver EMPLEADO y VENDEDOR de su sede
+            return User.objects.filter(role__in=[User.EMPLEADO, User.VENDEDOR], branch=user.branch).order_by('-date_joined')
         return User.objects.none()
 
     def create(self, request, *args, **kwargs):
@@ -68,7 +68,9 @@ class EmployeeListCreateView(generics.ListCreateAPIView):
         data = request.data.copy()
         if request.user.is_jefe_inventario:
             data['branch'] = request.user.branch.id if request.user.branch else None
-            data['role'] = User.EMPLEADO
+            # El Jefe puede crear Empleado o Vendedor
+            if data.get('role') != User.VENDEDOR:
+                data['role'] = User.EMPLEADO
         
         serializer = RegisterUserSerializer(data=data)
         if serializer.is_valid():

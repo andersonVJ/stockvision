@@ -6,11 +6,13 @@ class User(AbstractUser):
     ADMIN = 'ADMIN'
     JEFE_INVENTARIO = 'JEFE_INVENTARIO'
     EMPLEADO = 'EMPLEADO'
+    VENDEDOR = 'VENDEDOR'
 
     ROLE_CHOICES = (
         (ADMIN, 'Administrador General'),
         (JEFE_INVENTARIO, 'Jefe de Inventario'),
         (EMPLEADO, 'Empleado'),
+        (VENDEDOR, 'Vendedor / Asesor'),
     )
 
     POSITION_CHOICES = (
@@ -40,6 +42,10 @@ class User(AbstractUser):
     @property
     def is_jefe_inventario(self):
         return self.role == self.JEFE_INVENTARIO
+
+    @property
+    def is_vendedor(self):
+        return self.role == self.VENDEDOR
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"

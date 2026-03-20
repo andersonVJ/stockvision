@@ -71,13 +71,19 @@ export default function Pedidos() {
       alert("Por favor seleccione una sede");
       return;
     }
+    const itemsToSend = newOrderItems.filter(item => item.product && parseInt(item.requested_quantity) > 0);
+    if (itemsToSend.length === 0) {
+      alert("Debe agregar al menos un producto con cantidad mayor a 0.");
+      return;
+    }
     try {
       await createOrder({ 
         branch: selectedBranch,
-        items: newOrderItems 
+        items: itemsToSend 
       });
       setShowCreateModal(false);
       setNewOrderItems([{ product: "", requested_quantity: 1 }]);
+      setSelectedProvider("");
       setSelectedBranch("");
       loadData();
     } catch (err) {
@@ -242,50 +248,82 @@ export default function Pedidos() {
               </div>
 
               <div className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <label className="block text-sm font-bold text-slate-800 mb-2">Seleccionar Proveedor (Opcional, filtra productos)</label>
+                <label className="block text-sm font-bold text-slate-800 mb-2">Seleccionar Proveedor (Catálogo Automático)</label>
                 <select 
                   value={selectedProvider} 
                   onChange={(e) => {
-                    setSelectedProvider(e.target.value);
-                    setNewOrderItems([{ product: "", requested_quantity: 1 }]);
+                    const provId = e.target.value;
+                    setSelectedProvider(provId);
+                    if (provId) {
+                       const provProducts = products.filter(p => p.providers && p.providers.includes(parseInt(provId)));
+                       setNewOrderItems(provProducts.map(p => ({ product: String(p.id), requested_quantity: 0 })));
+                    } else {
+                       setNewOrderItems([{ product: "", requested_quantity: 1 }]);
+                    }
                   }}
                   className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">Todos los productos...</option>
+                  <option value="">Ingreso manual (Sin proveedor)</option>
                   {providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
 
-              {newOrderItems.map((item, index) => {
-                const availableProducts = selectedProvider 
-                   ? products.filter(p => p.providers.includes(parseInt(selectedProvider)))
-                   : products;
-                
-                return (
-                 <div key={index} className="flex gap-4 mb-3 items-end">
-                  <div className="flex-1">
-                    <label className="block text-xs text-slate-500 mb-1">Producto</label>
-                    <select required value={item.product} onChange={(e) => {
-                      const newItems = [...newOrderItems];
-                      newItems[index].product = e.target.value;
-                      setNewOrderItems(newItems);
-                    }} className="w-full border rounded-lg p-2 outline-none">
-                      <option value="">Seleccione...</option>
-                      {availableProducts.map(p => <option key={p.id} value={p.id}>{p.sku} - {p.name}</option>)}
-                    </select>
-                  </div>
-                  <div className="w-32">
-                    <label className="block text-xs text-slate-500 mb-1">Cant. Solicitada</label>
-                    <input required type="number" min="1" value={item.requested_quantity} onChange={(e) => {
-                      const newItems = [...newOrderItems];
-                      newItems[index].requested_quantity = e.target.value;
-                      setNewOrderItems(newItems);
-                    }} className="w-full border rounded-lg p-2 outline-none" />
+              {selectedProvider ? (
+                <div className="mb-6">
+                  <h3 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Productos del Proveedor Seleccionado</h3>
+                  <div className="max-h-64 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white">
+                    {newOrderItems.map((item, index) => {
+                      const prod = products.find(p => String(p.id) === String(item.product));
+                      return (
+                        <div key={index} className={`flex justify-between items-center p-3 hover:bg-slate-50 transition-colors ${item.requested_quantity > 0 ? 'bg-blue-50/30' : ''}`}>
+                          <div className="flex-1 pr-4">
+                            <p className="font-bold text-sm text-slate-800">{prod?.name}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">SKU: {prod?.sku} <span className="ml-2 px-1.5 py-0.5 bg-slate-100 rounded text-slate-600">Stock actual general: {prod?.inventories?.reduce((a,b)=>a+b.quantity,0) || 0}</span></p>
+                          </div>
+                          <div className="w-28 shrink-0">
+                            <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1 text-center">Cantidad a Pedir</label>
+                            <input type="number" min="0" value={item.requested_quantity} onChange={(e) => {
+                              const newItems = [...newOrderItems];
+                              newItems[index].requested_quantity = e.target.value;
+                              setNewOrderItems(newItems);
+                            }} className={`w-full border rounded-lg p-2 outline-none text-center font-bold transition-colors ${item.requested_quantity > 0 ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-400'}`} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {newOrderItems.length === 0 && (
+                      <div className="p-6 text-center text-slate-500 text-sm font-medium">Este proveedor no tiene productos asociados en el sistema. Vaya a Inventario y asocie productos a este proveedor.</div>
+                    )}
                   </div>
                 </div>
-               );
-              })}
-              <button type="button" onClick={handleAddOrderItem} className="text-blue-600 text-sm font-bold mb-6 hover:underline">+ Añadir otro producto</button>
+              ) : (
+                <>
+                  {newOrderItems.map((item, index) => (
+                   <div key={index} className="flex gap-4 mb-3 items-end">
+                    <div className="flex-1">
+                      <label className="block text-xs text-slate-500 mb-1">Producto</label>
+                      <select required value={item.product} onChange={(e) => {
+                        const newItems = [...newOrderItems];
+                        newItems[index].product = e.target.value;
+                        setNewOrderItems(newItems);
+                      }} className="w-full border rounded-lg p-2 outline-none focus:border-blue-500">
+                        <option value="">Seleccione un producto...</option>
+                        {products.map(p => <option key={p.id} value={p.id}>{p.sku} - {p.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="w-32 shrink-0">
+                      <label className="block text-xs text-slate-500 mb-1">Cant. Solicitada</label>
+                      <input required type="number" min="1" value={item.requested_quantity} onChange={(e) => {
+                        const newItems = [...newOrderItems];
+                        newItems[index].requested_quantity = e.target.value;
+                        setNewOrderItems(newItems);
+                      }} className="w-full border rounded-lg p-2 outline-none focus:border-blue-500" />
+                    </div>
+                  </div>
+                 ))}
+                 <button type="button" onClick={handleAddOrderItem} className="text-blue-600 text-sm font-bold mb-6 hover:underline inline-flex items-center gap-1">+ Añadir otra fila manualmente</button>
+                </>
+              )}
               
               <div className="flex justify-end gap-3 mt-4 border-t pt-4">
                 <button type="button" onClick={() => setShowCreateModal(false)} className="px-4 py-2 border rounded-lg text-slate-700">Cancelar</button>

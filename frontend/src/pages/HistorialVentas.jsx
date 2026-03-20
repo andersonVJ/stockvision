@@ -31,7 +31,7 @@ export default function HistorialVentas() {
     s.id.toString().includes(searchTerm) || 
     (s.branch_name && s.branch_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (s.user_name && s.user_name.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  ).sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans text-slate-800">

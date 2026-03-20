@@ -144,6 +144,9 @@ class Sale(models.Model):
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='COMPLETED')
     
+    class Meta:
+        ordering = ['-date']
+
     def __str__(self):
         return f"Sale #{self.id} - {self.branch.name} - {self.status}"
 

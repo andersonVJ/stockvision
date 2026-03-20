@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
-import { getCompanyEmployees, registerEmployee, deleteEmployee, updateEmployeeRole } from "../services/userService";
 import { getBranches } from "../services/inventoryService";
 import { showErrorAlert, showSuccessAlert, showConfirmAlert } from "../utils/alerts";
 
@@ -72,11 +71,23 @@ export default function GestionEmpleados() {
     const isConfirmed = await showConfirmAlert("¿Eliminar empleado?", "Esta acción no se puede deshacer.");
     if (!isConfirmed) return;
     try {
-      await deleteEmployee(id);
-      showSuccessAlert("Empleado eliminado");
-      loadEmployees();
+      const tokens = JSON.parse(localStorage.getItem("tokens") || "{}");
+      const res = await fetch(
+        `http://127.0.0.1:8000/api/users/employees/${id}/`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${tokens.access}` }
+        }
+      );
+      
+      if (res.ok) {
+        showSuccessAlert("Empleado eliminado");
+        loadEmployees();
+      } else {
+        showErrorAlert("Error al eliminar");
+      }
     } catch (err) {
-      showErrorAlert(err.response?.data?.error || "Error al eliminar");
+      showErrorAlert("Error de conexión al eliminar");
     }
   };
 

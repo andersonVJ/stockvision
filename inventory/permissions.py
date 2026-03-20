@@ -23,8 +23,8 @@ class IsInventoryManagerOrReadOnly(BasePermission):
         if request.method in ['GET', 'HEAD', 'OPTIONS']:
             return True
             
-        # Allow POST only for movements and orders (approval/delivery logic is handled in the view itself)
-        if view.basename in ['stockmovement', 'order'] and request.method == 'POST':
+        # Allow POST only for movements, orders, and sales (approval/delivery logic handled separately)
+        if view.basename in ['stockmovement', 'order', 'sale'] and request.method == 'POST':
             return True
             
         return False

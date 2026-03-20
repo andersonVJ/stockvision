@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import { useNavigate } from "react-router-dom";
-import { getCategories, createCategory, getProducts, createProduct, updateProduct, deleteProduct, getInventories, getMovements, createMovement, getDashboardAlerts, getProviders } from "../services/inventoryService";
+import { 
+  getCategories, createCategory, getProducts, createProduct, updateProduct, deleteProduct, 
+  getInventories, getMovements, createMovement, getDashboardAlerts, getProviders
+} from "../services/inventoryService";
+import { showErrorAlert, showSuccessAlert, showConfirmAlert } from "../utils/alerts";
 import { ShoppingCart, AlertTriangle, Clock, List, LayoutGrid, PackageX, Edit2, Building, Search } from "lucide-react";
 
 export default function Inventario() {
@@ -69,8 +73,9 @@ export default function Inventario() {
     try {
       await createCategory({ name: newCatName, vida_util_meses: catVidaUtil });
       setNewCatName("");
+      showSuccessAlert("Categoría creada con éxito");
       loadData();
-    } catch (err) { alert("Error al crear categoría"); }
+    } catch (err) { showErrorAlert(`Error al crear categoría: ${err.message}`); }
   };
 
   // PRODUCT FORM
@@ -113,19 +118,22 @@ export default function Inventario() {
       setIsEditingProduct(false);
       setEditingProductId(null);
       setProdData({ name: "", sku: "", price: "", category: "", fecha_ingreso: "", image: null, providers: [], description: "" });
+      showSuccessAlert("Producto guardado con éxito");
       loadData();
-    } catch (err) { alert("Error al guardar producto."); }
+    } catch (err) { showErrorAlert(`Error al guardar producto: ${err.message}`); }
   };
 
   const handleDeleteProduct = async () => {
-    if (!window.confirm("¿Está seguro de que desea eliminar este producto permanentemente de la base de datos?")) return;
+    const isConfirmed = await showConfirmAlert("¿Eliminar producto?", "Esta acción no se puede deshacer.");
+    if (!isConfirmed) return;
     try {
       await deleteProduct(editingProductId);
+      showSuccessAlert("Producto eliminado con éxito");
       setShowProductModal(false);
       setIsEditingProduct(false);
       setEditingProductId(null);
       loadData();
-    } catch (err) { alert("Error al eliminar el producto. Quizás tenga ventas o movimientos asociados."); }
+    } catch (err) { showErrorAlert("Error al eliminar el producto. Quizás tenga ventas o movimientos asociados."); }
   };
 
   const openEditProduct = (product) => {
@@ -167,8 +175,9 @@ export default function Inventario() {
     try {
       await createMovement(movData);
       setShowMovementModal(false);
+      showSuccessAlert("Movimiento registrado con éxito");
       loadData();
-    } catch (err) { alert("Error al registrar movimiento."); }
+    } catch (err) { showErrorAlert(`Error al registrar movimiento: ${err.message}`); }
   };
 
   const getProductDetails = (sku) => {

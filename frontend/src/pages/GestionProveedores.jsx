@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import { getProviders, createProvider, updateProvider, deleteProvider, getCompanies, getInventories, getProducts, getCategories } from "../services/inventoryService";
+import { showErrorAlert, showSuccessAlert, showConfirmAlert } from "../utils/alerts";
 import { Plus, Edit2, Trash2, Building, Mail, Phone, MapPin, User as UserIcon, Package } from "lucide-react";
 
 export default function GestionProveedores() {
@@ -108,21 +109,23 @@ export default function GestionProveedores() {
         await createProvider(formData);
       }
       setShowModal(false);
+      showSuccessAlert("Proveedor guardado con éxito");
       loadProviders();
     } catch (err) {
-      console.error(err.response?.data || err);
-      alert("Error al guardar proveedor: " + JSON.stringify(err.response?.data || err.message));
+      const msg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      showErrorAlert(`Error al guardar proveedor: ${msg}`);
     }
   };
 
   const handleDelete = async (id) => {
-    if (confirm("¿Estás seguro de eliminar este proveedor?")) {
-      try {
-        await deleteProvider(id);
-        loadProviders();
-      } catch (error) {
-        alert("Error al eliminar proveedor");
-      }
+    const isConfirmed = await showConfirmAlert("¿Eliminar proveedor?", "Esta acción no se puede deshacer.");
+    if (!isConfirmed) return;
+    try {
+      await deleteProvider(id);
+      showSuccessAlert("Proveedor eliminado con éxito");
+      loadProviders();
+    } catch (err) {
+      showErrorAlert("Error al eliminar proveedor");
     }
   };
 

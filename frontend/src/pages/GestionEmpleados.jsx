@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
+import { getCompanyEmployees, registerEmployee, deleteEmployee, updateEmployeeRole } from "../services/userService";
 import { getBranches } from "../services/inventoryService";
+import { showErrorAlert, showSuccessAlert, showConfirmAlert } from "../utils/alerts";
 
 export default function GestionEmpleados() {
   const [user, setUser] = useState({});
@@ -40,7 +42,7 @@ export default function GestionEmpleados() {
     getBranches().then(data => setBranches(data)).catch(console.error);
   }, []);
 
-  const fetchEmployees = async () => {
+  const loadEmployees = async () => {
     try {
       setLoading(true);
       const tokens = JSON.parse(localStorage.getItem("tokens") || "{}");
@@ -63,30 +65,18 @@ export default function GestionEmpleados() {
   };
 
   useEffect(() => {
-    fetchEmployees();
+    loadEmployees();
   }, [user]);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("¿Seguro que deseas eliminar este empleado?")) return;
-
+  const handleDeleteEmployee = async (id) => {
+    const isConfirmed = await showConfirmAlert("¿Eliminar empleado?", "Esta acción no se puede deshacer.");
+    if (!isConfirmed) return;
     try {
-      const tokens = JSON.parse(localStorage.getItem("tokens") || "{}");
-
-      const res = await fetch(
-        `http://127.0.0.1:8000/api/users/employees/${id}/`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${tokens.access}` }
-        }
-      );
-
-      if (res.ok) {
-        fetchEmployees();
-      } else {
-        alert("Error al eliminar");
-      }
-    } catch (e) {
-      alert("Error de conexión");
+      await deleteEmployee(id);
+      showSuccessAlert("Empleado eliminado");
+      loadEmployees();
+    } catch (err) {
+      showErrorAlert(err.response?.data?.error || "Error al eliminar");
     }
   };
 
@@ -109,13 +99,13 @@ export default function GestionEmpleados() {
       );
 
       if (res.ok) {
-        alert("Cargo asignado exitosamente");
-        fetchEmployees();
+        loadEmployees();
+        showSuccessAlert("Cargo asignado exitosamente");
       } else {
-        alert("Error al asignar cargo");
+        showErrorAlert("Error al asignar cargo");
       }
     } catch (e) {
-      alert("Error de conexión");
+      showErrorAlert("Error de conexión");
     }
   };
 

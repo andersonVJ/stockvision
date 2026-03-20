@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import { getBranches, createBranch, updateBranch, deleteBranch, getCompanies } from "../services/inventoryService";
+import { showErrorAlert, showSuccessAlert, showConfirmAlert } from "../utils/alerts";
 
 export default function GestionSedes() {
   const [user, setUser] = useState({});
@@ -53,10 +54,10 @@ export default function GestionSedes() {
     try {
       if (isEditing) {
         await updateBranch(editingId, formData);
-        alert("Sede actualizada con éxito.");
+        showSuccessAlert("Sede actualizada con éxito.");
       } else {
         await createBranch(formData);
-        alert("Sede creada con éxito. Recuerda que al crear una sede, se generaron inventarios en 0 para todos los productos existentes en esta sede.");
+        showSuccessAlert("Sede creada con éxito. Se generaron inventarios en 0 para los productos existentes.");
       }
       setShowModal(false);
       setIsEditing(false);
@@ -65,7 +66,7 @@ export default function GestionSedes() {
       loadBranches();
     } catch (err) {
       console.error(err.response?.data || err);
-      alert(isEditing ? "Error al actualizar la sede" : "Error al crear la sede");
+      showErrorAlert(isEditing ? "Error al actualizar la sede" : "Error al crear la sede");
     }
   };
 
@@ -76,15 +77,15 @@ export default function GestionSedes() {
     setShowModal(true);
   };
 
-  const handleDeleteBranch = async (id) => {
-    if (window.confirm("¿Estás seguro de que deseas eliminar esta sede? Esto afectará los inventarios y ventas asociadas.")) {
-      try {
-        await deleteBranch(id);
-        alert("Sede eliminada con éxito.");
-        loadBranches();
-      } catch (err) {
-        alert("Error al eliminar la sede.");
-      }
+  const handleDelete = async (id) => {
+    const isConfirmed = await showConfirmAlert("¿Eliminar Sede?", "Se eliminarán permanentemente los empleados e inventarios asociados a esta sede. Esta acción es irreversible.");
+    if (!isConfirmed) return;
+    try {
+      await deleteBranch(id);
+      showSuccessAlert("Sede eliminada con éxito.");
+      loadBranches();
+    } catch (err) {
+      showErrorAlert("Error al eliminar la sede.");
     }
   };
 

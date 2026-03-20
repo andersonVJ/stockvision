@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import { getOrders, createOrder, approveOrder, deliverOrder, rejectOrder } from "../services/orderService";
 import { getProducts, getBranches, getProviders } from "../services/inventoryService";
+import { showErrorAlert, showSuccessAlert, showWarningAlert } from "../utils/alerts";
 
 export default function Pedidos() {
   const [user, setUser] = useState({});
@@ -68,12 +69,12 @@ export default function Pedidos() {
   const handleCreateOrder = async (e) => {
     e.preventDefault();
     if (!selectedBranch) {
-      alert("Por favor seleccione una sede");
+      showWarningAlert("Por favor seleccione una sede");
       return;
     }
     const itemsToSend = newOrderItems.filter(item => item.product && parseInt(item.requested_quantity) > 0);
     if (itemsToSend.length === 0) {
-      alert("Debe agregar al menos un producto con cantidad mayor a 0.");
+      showWarningAlert("Debe agregar al menos un producto con cantidad mayor a 0.");
       return;
     }
     try {
@@ -86,8 +87,9 @@ export default function Pedidos() {
       setSelectedProvider("");
       setSelectedBranch("");
       loadData();
+      showSuccessAlert("Pedido creado con éxito");
     } catch (err) {
-      alert("Error al crear el pedido");
+      showErrorAlert("Error al crear el pedido");
     }
   };
 
@@ -96,10 +98,9 @@ export default function Pedidos() {
     if (!window.confirm("¿Aprobar este pedido?")) return;
     try {
       await approveOrder(id);
+      showSuccessAlert("Pedido aprobado");
       loadData();
-    } catch (err) {
-      alert("Error al aprobar");
-    }
+    } catch (err) { showWarningAlert("Error al aprobar"); }
   };
 
   // REJECT ORDER
@@ -107,10 +108,9 @@ export default function Pedidos() {
       if (!window.confirm("¿Está seguro de denegar este pedido?")) return;
       try {
           await rejectOrder(id);
+          showSuccessAlert("Pedido denegado");
           loadData();
-      } catch (err) {
-          alert("Error al denegar el pedido");
-      }
+      } catch (err) { showWarningAlert("Error al denegar el pedido"); }
   };
 
   // DELIVER ORDER FORM
@@ -136,8 +136,9 @@ export default function Pedidos() {
       await deliverOrder(selectedOrder.id, deliveryItems);
       setShowDeliverModal(false);
       loadData();
+      showSuccessAlert("Pedido recibido con éxito");
     } catch (err) {
-      alert("Error al recibir pedido");
+      showErrorAlert("Error al recibir pedido");
     }
   };
 

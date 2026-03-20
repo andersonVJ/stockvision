@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import Sidebar from "../components/Sidebar";
 import { getInventories, getProducts, createSale, getClientByDocument } from "../services/inventoryService";
 import FacturaImprimible from "../components/FacturaImprimible";
+import { showErrorAlert, showWarningAlert, showSuccessAlert } from "../utils/alerts";
 
 export default function PuntoDeVenta() {
   const [user, setUser] = useState({});
@@ -46,20 +47,20 @@ export default function PuntoDeVenta() {
 
   const addToCart = (inventory) => {
     if (cart.length > 0 && cart[0].branch_id && cart[0].branch_id !== inventory.branch) {
-      alert("No puedes mezclar productos de diferentes sedes en el mismo carrito.");
+      showWarningAlert("No puedes mezclar productos de diferentes sedes en el mismo carrito.");
       return;
     }
 
     const existing = cart.find(item => item.product === inventory.product);
     if (existing) {
       if (existing.quantity >= inventory.quantity) {
-        alert("Stock insuficiente en tu bodega");
+        showWarningAlert("Stock insuficiente en tu bodega");
         return;
       }
       setCart(cart.map(item => item.product === inventory.product ? { ...item, quantity: item.quantity + 1 } : item));
     } else {
       if (inventory.quantity <= 0) {
-        alert("Este producto está agotado en tu bodega");
+        showWarningAlert("Este producto está agotado en tu bodega");
         return;
       }
       const productDetail = products.find(p => p.sku === inventory.product_sku) || { price: 0 };
@@ -82,7 +83,7 @@ export default function PuntoDeVenta() {
 
   const updateQuantity = (productId, newQuantity, available) => {
     if (newQuantity > available) {
-      alert("No hay suficiente stock.");
+      showWarningAlert("No hay suficiente stock.");
       return;
     }
     if (newQuantity <= 0) {
@@ -95,7 +96,7 @@ export default function PuntoDeVenta() {
   const cartTotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
   const handleOpenCheckout = () => {
-    if (cart.length === 0) return alert("El carrito está vacío.");
+    if (cart.length === 0) return showWarningAlert("El carrito está vacío.");
     setShowCheckoutModal(true);
     setInvoiceType('FISICA');
     setClientData({ id_document: '', name: '', phone: '', email: '' });
@@ -146,8 +147,10 @@ export default function PuntoDeVenta() {
       setShowCheckoutModal(false);
       setCart([]);
       loadData();
+      showSuccessAlert("Venta procesada con éxito");
     } catch (err) {
-      alert("Error al procesar la venta. Verifica el stock y los datos ingresados.");
+      const backendError = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      showErrorAlert(`Error al procesar la venta: ${backendError}`);
     }
   };
 
@@ -159,7 +162,7 @@ export default function PuntoDeVenta() {
     <div className="flex bg-slate-50 font-sans text-slate-800 h-screen overflow-hidden print:bg-white">
       
       {/* Vista Principal Normal */}
-      <div className={`flex flex-1 w-full h-full max-h-screen ${invoiceData ? 'hidden print:block' : 'print:hidden'}`}>
+      <div className={`flex flex-1 w-full h-full max-h-screen ${invoiceData ? 'hidden' : ''} print:hidden`}>
         <Sidebar className="print:hidden h-full sticky top-0" />
         <div className="flex-1 p-8 overflow-y-auto max-h-screen">
           <div className="flex gap-6 h-full pb-8">

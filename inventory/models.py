@@ -5,7 +5,7 @@ from django.db import models
 class Category(models.Model):
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True, null=True)
-    vida_util_meses = models.IntegerField(default=0, help_text="Vida útil estimada en meses")
+    vida_util_anios = models.IntegerField(default=0, help_text="Vida útil estimada en años")
     company = models.ForeignKey('companies.Company', on_delete=models.CASCADE, related_name='categories')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -46,9 +46,9 @@ class Product(models.Model):
 
     @property
     def fecha_estimada_fin_vida(self):
-        if self.fecha_ingreso and self.category and self.category.vida_util_meses:
+        if self.fecha_ingreso and self.category and self.category.vida_util_anios:
             from datetime import timedelta
-            return self.fecha_ingreso + timedelta(days=self.category.vida_util_meses * 30)
+            return self.fecha_ingreso + timedelta(days=self.category.vida_util_anios * 365.25)
         return None
 
     def __str__(self):

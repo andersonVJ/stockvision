@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import { useNavigate } from "react-router-dom";
 import { 
-  getCategories, createCategory, getProducts, createProduct, updateProduct, deleteProduct, 
+  getCategories, createCategory, updateCategory, deleteCategory, getProducts, createProduct, updateProduct, deleteProduct, 
   getInventories, getMovements, createMovement, getDashboardAlerts, getProviders
 } from "../services/inventoryService";
 import { showErrorAlert, showSuccessAlert, showConfirmAlert } from "../utils/alerts";
-import { ShoppingCart, AlertTriangle, Clock, List, LayoutGrid, PackageX, Edit2, Building, Search } from "lucide-react";
+import { ShoppingCart, AlertTriangle, Clock, List, LayoutGrid, PackageX, Edit2, Building, Search, Trash2 } from "lucide-react";
 
 export default function Inventario() {
   const navigate = useNavigate();
@@ -67,15 +67,49 @@ export default function Inventario() {
 
   // CATEGORY FORM
   const [newCatName, setNewCatName] = useState("");
-  const [catVidaUtil, setCatVidaUtil] = useState(12);
+  const [catVidaUtil, setCatVidaUtil] = useState(1);
+  const [isEditingCategory, setIsEditingCategory] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState(null);
+
   const handleCatSubmit = async (e) => {
     e.preventDefault();
     try {
-      await createCategory({ name: newCatName, vida_util_meses: catVidaUtil });
+      if (isEditingCategory) {
+        await updateCategory(editingCategoryId, { name: newCatName, vida_util_anios: catVidaUtil });
+        showSuccessAlert("Categoría actualizada con éxito");
+      } else {
+        await createCategory({ name: newCatName, vida_util_anios: catVidaUtil });
+        showSuccessAlert("Categoría creada con éxito");
+      }
       setNewCatName("");
-      showSuccessAlert("Categoría creada con éxito");
+      setCatVidaUtil(1);
+      setIsEditingCategory(false);
+      setEditingCategoryId(null);
       loadData();
-    } catch (err) { showErrorAlert(`Error al crear categoría: ${err.message}`); }
+    } catch (err) { showErrorAlert(`Error al guardar categoría: ${err.message}`); }
+  };
+
+  const handleDeleteCategory = async (id) => {
+    const isConfirmed = await showConfirmAlert("¿Eliminar categoría?", "Esta acción no se puede deshacer.");
+    if (!isConfirmed) return;
+    try {
+      await deleteCategory(id);
+      showSuccessAlert("Categoría eliminada con éxito");
+      if (isEditingCategory && editingCategoryId === id) {
+        setIsEditingCategory(false);
+        setEditingCategoryId(null);
+        setNewCatName("");
+        setCatVidaUtil(1);
+      }
+      loadData();
+    } catch (err) { showErrorAlert("Error al eliminar la categoría. Probablemente tenga productos asociados."); }
+  };
+
+  const openEditCategory = (cat) => {
+    setNewCatName(cat.name);
+    setCatVidaUtil(cat.vida_util_anios);
+    setIsEditingCategory(true);
+    setEditingCategoryId(cat.id);
   };
 
   // PRODUCT FORM
@@ -407,17 +441,31 @@ export default function Inventario() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {user.role !== 'EMPLEADO' && (
                     <div className="md:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-fit">
-                      <h2 className="text-lg font-bold mb-4">Nueva Familia / Categoría</h2>
+                      <h2 className="text-lg font-bold mb-4">{isEditingCategory ? "Editar Familia / Categoría" : "Nueva Familia / Categoría"}</h2>
                       <form onSubmit={handleCatSubmit} className="flex flex-col gap-4">
                         <div>
                           <label className="text-xs font-bold text-slate-500 uppercase">Nombre</label>
                           <input required type="text" value={newCatName} onChange={e => setNewCatName(e.target.value)} className="w-full border p-2.5 rounded-xl bg-slate-50 outline-none focus:border-blue-500 mt-1" />
                         </div>
                         <div>
-                          <label className="text-xs font-bold text-slate-500 uppercase">Vida Útil Estimada (Meses)</label>
+                          <label className="text-xs font-bold text-slate-500 uppercase">Vida Útil Estimada (Años)</label>
                           <input required type="number" min="0" value={catVidaUtil} onChange={e => setCatVidaUtil(e.target.value)} className="w-full border p-2.5 rounded-xl bg-slate-50 outline-none focus:border-blue-500 mt-1" />
                         </div>
-                        <button className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 font-semibold mt-2 shadow-sm">Guardar Familia</button>
+                        <div className="flex gap-2 mt-2">
+                          <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 font-semibold shadow-sm">
+                            {isEditingCategory ? "Guardar" : "Guardar Familia"}
+                          </button>
+                          {isEditingCategory && (
+                            <button type="button" onClick={() => {
+                              setIsEditingCategory(false);
+                              setEditingCategoryId(null);
+                              setNewCatName("");
+                              setCatVidaUtil(1);
+                            }} className="bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl py-2.5 px-4 font-semibold shadow-sm">
+                              Cancelar
+                            </button>
+                          )}
+                        </div>
                       </form>
                     </div>
                   )}
@@ -425,9 +473,19 @@ export default function Inventario() {
                     <h2 className="text-lg font-bold mb-4">Listado de Categorías</h2>
                     <div className="grid grid-cols-2 gap-4">
                       {categories.map(c => (
-                        <div key={c.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-blue-200 transition-colors">
-                          <h3 className="font-bold text-slate-800">{c.name}</h3>
-                          <p className="text-sm text-slate-500 mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Vida útil: {c.vida_util_meses} meses</p>
+                        <div key={c.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-blue-200 transition-colors relative group">
+                          <h3 className="font-bold text-slate-800 pr-6">{c.name}</h3>
+                          <p className="text-sm text-slate-500 mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Vida útil: {c.vida_util_anios} años</p>
+                          {user.role !== 'EMPLEADO' && (
+                            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                                <button onClick={() => openEditCategory(c)} className="text-blue-500 hover:text-blue-700">
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => handleDeleteCategory(c.id)} className="text-red-500 hover:text-red-700">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

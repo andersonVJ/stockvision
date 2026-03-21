@@ -20,6 +20,16 @@ export const createCategory = async (data) => {
     return res.data;
 };
 
+export const updateCategory = async (id, data) => {
+    const res = await axios.put(`http://127.0.0.1:8000/api/inventory/categories/${id}/`, data, getAuthHeaders());
+    return res.data;
+};
+
+export const deleteCategory = async (id) => {
+    const res = await axios.delete(`http://127.0.0.1:8000/api/inventory/categories/${id}/`, getAuthHeaders());
+    return res.data;
+};
+
 export const getProducts = async () => {
     const res = await axios.get("http://127.0.0.1:8000/api/inventory/products/", getAuthHeaders());
     return res.data;

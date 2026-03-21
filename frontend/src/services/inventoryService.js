@@ -90,8 +90,19 @@ export const getSales = async () => {
     return res.data;
 };
 
+export const getSalesByClient = async (document) => {
+    const res = await axios.get(`http://127.0.0.1:8000/api/inventory/sales/?client_document=${document}`, getAuthHeaders());
+    return res.data;
+};
+
 export const createSale = async (data) => {
     const res = await axios.post("http://127.0.0.1:8000/api/inventory/sales/", data, getAuthHeaders());
+    return res.data;
+};
+
+export const sendInvoiceEmail = async (saleId, email = null) => {
+    const payload = email ? { email } : {};
+    const res = await axios.post(`http://127.0.0.1:8000/api/inventory/sales/${saleId}/send_email/`, payload, getAuthHeaders());
     return res.data;
 };
 

@@ -4,6 +4,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
 from django.core.mail import send_mail
+from django.db.models import Q
 
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
@@ -11,6 +12,8 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.exceptions import ValidationError
+from django.db import IntegrityError
 
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth import get_user_model
@@ -92,6 +95,14 @@ class ClientViewSet(viewsets.ModelViewSet):
         if user.company:
             queryset = queryset.filter(company=user.company)
             
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search) |
+                Q(id_document__icontains=search) |
+                Q(email__icontains=search)
+            )
+            
         id_document = self.request.query_params.get('id_document')
         if id_document:
             queryset = queryset.filter(id_document=id_document)
@@ -99,7 +110,32 @@ class ClientViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        serializer.save(company=self.request.user.company)
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            raise ValidationError({"detail": "Usuario no autenticado."})
+            
+        company = user.company
+        
+        # Fallback para ADMINs sin empresa asignada
+        if not company:
+            if user.is_staff or getattr(user, 'role', None) == 'ADMIN':
+                # Intentamos tomar la primera empresa del sistema como fallback
+                first_company = Company.objects.first()
+                if first_company:
+                    company = first_company
+                else:
+                    raise ValidationError({"detail": "No hay empresas creadas en el sistema."})
+            else:
+                raise ValidationError({"detail": "Tu usuario no tiene una empresa asociada. Contacta al administrador."})
+            
+        try:
+            serializer.save(company=company)
+        except IntegrityError as e:
+            if 'id_document' in str(e).lower():
+                raise ValidationError({"id_document": "Ya existe un cliente con este documento en esta empresa."})
+            raise ValidationError({"detail": f"Error de integridad: {str(e)}"})
+        except Exception as e:
+            raise ValidationError({"detail": f"Error inesperado: {str(e)}"})
 
 
 # ============================================

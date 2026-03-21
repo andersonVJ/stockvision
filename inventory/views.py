@@ -309,6 +309,13 @@ class SaleViewSet(BaseInventoryViewSet):
     queryset = Sale.objects.all()
     serializer_class = SaleSerializer
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        client_doc = self.request.query_params.get('client_document')
+        if client_doc:
+            qs = qs.filter(client__id_document=client_doc)
+        return qs
+
     def perform_create(self, serializer):
         user = self.request.user
         branch = user.branch
@@ -389,6 +396,49 @@ class SaleViewSet(BaseInventoryViewSet):
         
         sale.total = total
         sale.save()
+
+    @action(detail=True, methods=['post'])
+    def send_email(self, request, pk=None):
+        sale = self.get_object()
+        email = request.data.get('email') or (sale.client.email if sale.client else None)
+        
+        if not email:
+            return Response({"error": "No se proporcionó un correo electrónico."}, status=400)
+            
+        try:
+            items_text = "\n".join([f"- {item.product.name}: {item.quantity} x ${item.price_at_sale}" for item in sale.items.all()])
+            
+            message = f"""
+            Factura #{sale.id} - StockVision
+            
+            Sede: {sale.branch.name}
+            Fecha: {sale.date.strftime('%d/%m/%Y %H:%M')}
+            Cliente: {sale.client.name if sale.client else 'N/A'}
+            Documento: {sale.client.id_document if sale.client else 'N/A'}
+            
+            Detalle de productos:
+            {items_text}
+            
+            TOTAL: ${sale.total}
+            
+            Gracias por su compra.
+            StockVision
+            """
+            
+            from django.core.mail import send_mail
+            from django.conf import settings
+            
+            send_mail(
+                subject=f"Tu Factura #{sale.id} - StockVision",
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+            
+            return Response({"message": f"Factura enviada correctamente a {email}"})
+        except Exception as e:
+            return Response({"error": f"Error al enviar correo: {str(e)}"}, status=500)
 
 class InventoryEntryViewSet(BaseInventoryViewSet):
     queryset = InventoryEntry.objects.all()

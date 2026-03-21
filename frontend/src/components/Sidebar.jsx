@@ -45,6 +45,7 @@ export default function Sidebar() {
         { name: "Inventario", path: "/inventory", icon: <Package className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO"] },
         { name: "Punto de Venta", path: "/pos", icon: <Store className="w-[18px] h-[18px]" />, roles: ["JEFE_INVENTARIO", "EMPLEADO", "VENDEDOR"] },
         { name: "Historial de Ventas", path: "/ventas", icon: <Receipt className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO", "VENDEDOR"] },
+        { name: "Gestión de Clientes", path: "/clientes", icon: <Users className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO", "VENDEDOR"] },
         { name: "Pedidos y Recepción", path: "/orders", icon: <Truck className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO", "VENDEDOR"] },
         { name: "Predicción IA", path: "/predictions", icon: <TrendingUp className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO"] },
         { name: "Empleados", path: "/empleados", icon: <Users className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO"] }

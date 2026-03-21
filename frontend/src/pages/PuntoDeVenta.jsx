@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import Sidebar from "../components/Sidebar";
-import { getInventories, getProducts, createSale, getClientByDocument } from "../services/inventoryService";
+import { getInventories, getProducts, createSale, getClientByDocument, getSalesByClient } from "../services/inventoryService";
 import FacturaImprimible from "../components/FacturaImprimible";
 import { showErrorAlert, showWarningAlert, showSuccessAlert } from "../utils/alerts";
 
@@ -18,6 +18,8 @@ export default function PuntoDeVenta() {
   const [clientData, setClientData] = useState({ id_document: '', name: '', phone: '', email: '' });
   const [clientSearching, setClientSearching] = useState(false);
   const [selectedBranchId, setSelectedBranchId] = useState("");
+  const [clientHistory, setClientHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   
   const componentRef = useRef();
 
@@ -117,10 +119,29 @@ export default function PuntoDeVenta() {
             phone: client.phone || '',
             email: client.email || ''
           });
+          // Una vez encontrado el cliente, buscamos su historial
+          fetchClientHistory(doc);
+        } else {
+          setClientHistory([]);
         }
-      } catch (err) {}
+      } catch (err) {
+        setClientHistory([]);
+      }
       setClientSearching(false);
+    } else {
+      setClientHistory([]);
     }
+  };
+
+  const fetchClientHistory = async (document) => {
+    setLoadingHistory(true);
+    try {
+      const history = await getSalesByClient(document);
+      setClientHistory(Array.isArray(history) ? history : history.results || []);
+    } catch (err) {
+      console.error("Error fetching history:", err);
+    }
+    setLoadingHistory(false);
   };
 
   const handleCheckout = async () => {
@@ -361,6 +382,43 @@ export default function PuntoDeVenta() {
                       className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                   </div>
+                </div>
+              </div>
+            )}
+
+            {invoiceType === 'ELECTRONICA' && clientData.id_document.length >= 5 && (
+              <div className="mb-6">
+                <h3 className="font-bold text-slate-700 text-sm mb-2 flex items-center gap-2">
+                  📜 Historial del Cliente 
+                  {loadingHistory && <span className="text-[10px] animate-pulse text-blue-500">(Cargando...)</span>}
+                </h3>
+                <div className="max-h-32 overflow-y-auto border border-slate-100 rounded-xl bg-slate-50 text-[11px]">
+                  {clientHistory.length === 0 ? (
+                    <p className="p-3 text-slate-400 italic">No hay pedidos previos registrados.</p>
+                  ) : (
+                    <table className="w-full text-left">
+                      <thead className="sticky top-0 bg-slate-100 text-slate-500 font-bold uppercase text-[9px]">
+                        <tr>
+                          <th className="p-2">Fecha</th>
+                          <th className="p-2">Total</th>
+                          <th className="p-2 text-right">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {clientHistory.map(sale => (
+                          <tr key={sale.id} className="hover:bg-blue-50/50">
+                            <td className="p-2">{new Date(sale.date).toLocaleDateString()}</td>
+                            <td className="p-2 font-bold">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits:0 }).format(sale.total)}</td>
+                            <td className="p-2 text-right">
+                              <span className={`px-1.5 py-0.5 rounded-full font-bold text-[9px] ${sale.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                {sale.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </div>
             )}

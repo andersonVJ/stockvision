@@ -16,7 +16,9 @@ class BranchSerializer(serializers.ModelSerializer):
         read_only_fields = ('created_at', 'updated_at', 'company')
 
 class ClientSerializer(serializers.ModelSerializer):
+    company = serializers.PrimaryKeyRelatedField(read_only=True)
+    
     class Meta:
         model = Client
         fields = '__all__'
-        read_only_fields = ('created_at', 'company')
+        read_only_fields = ('created_at',)

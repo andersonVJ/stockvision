@@ -14,6 +14,8 @@ import PuntoDeVenta from "./pages/PuntoDeVenta";
 import HistorialVentas from "./pages/HistorialVentas";
 import GestionProveedores from "./pages/GestionProveedores";
 import Clientes from "./pages/Clientes";
+import Logistica from "./pages/Logistica";
+import OrdenesCompra from "./pages/OrdenesCompra";
 
 function App() {
   return (
@@ -34,6 +36,8 @@ function App() {
         <Route path="/pos" element={<PuntoDeVenta />} />
         <Route path="/ventas" element={<HistorialVentas />} />
         <Route path="/clientes" element={<Clientes />} />
+        <Route path="/logistica" element={<Logistica />} />
+        <Route path="/compras" element={<OrdenesCompra />} />
       </Routes>
     </BrowserRouter>
   );

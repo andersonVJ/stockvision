@@ -1,116 +1,116 @@
 # 🚀 StockVision
 
-StockVision es un **Sistema Inteligente de Gestión de Inventarios y Predicción Automática**, construido con una arquitectura moderna separada en Backend (Django) y Frontend (React).
+StockVision es un __Sistema Inteligente de Gestión de Inventarios y Predicción Automática__, construido sobre una arquitectura moderna y robusta, separada en niveles de Backend (Django) y Frontend (React).
 
-Este sistema está diseñado para ofrecer una plataforma multi-empresa con múltiples roles, facilitando la administración de productos, rotación del inventario y ofreciendo un panel operativo claro y elegante para la toma de decisiones.
-
----
-
-## 🛠️ Tecnologías Utilizadas
-
-*   **Backend:**
-    *   Python 3 & Django
-    *   Django REST Framework (DRF)
-    *   `djangorestframework-simplejwt` (Autenticación mediante JSON Web Tokens - JWT)
-    *   `django-cors-headers` (Soporte Multi-Origen CORS)
-    *   Base de datos: SQLite (por defecto)
-*   **Frontend:**
-    *   React 18 & Vite
-    *   Tailwind CSS v4 (Estilos)
-    *   `react-router-dom` (Enrutamiento)
-    *   `lucide-react` (Iconografía)
-    *   Axios (Peticiones HTTP)
+Este sistema ha sido rigurosamente diseñado para proporcionar una plataforma corporativa multi-empresa y multi-rol. Facilita la administración centralizada de productos, la optimización de la rotación de inventarios y ofrece un panel operativo intuitivo y analítico para respaldar la toma de decisiones estratégicas.
 
 ---
 
-## 🧑‍💻 Inicialización del Proyecto
+## 🛠️ Stack Tecnológico
 
-Sigue estos pasos para arrancar ambos servicios y usar StockVision en tu entorno de desarrollo local.
+- __Backend:__
+    - Python 3 y Django
+    - Django REST Framework (DRF)
+    - `djangorestframework-simplejwt` (Autenticación segura mediante JSON Web Tokens)
+    - `django-cors-headers` (Soporte Multi-Origen CORS)
+    - Motor de Base de Datos: SQLite (Configuración inicial)
+- __Frontend:__
+    - React 18 y Vite
+    - Tailwind CSS v4 (Sistema de diseño utilitario)
+    - `react-router-dom` (Gestión de rutas)
+    - `lucide-react` (Sistema de iconografía)
+    - Axios (Cliente HTTP)
 
-### 1. Levantar el Backend (Django)
-Abre una terminal, dirígete a la ruta base de tu proyecto y ejecuta los siguientes comandos:
+---
+
+## 🧑‍💻 Guía de Despliegue Local
+
+Siga cuidadosamente estos pasos para inicializar los servicios y ejecutar StockVision en su entorno de desarrollo local.
+
+### 1. Inicialización del Backend (Django)
+Abra su terminal, navegue hasta el directorio raíz del proyecto y ejecute los siguientes comandos:
 
 ```bash
-# 1. Crear el entorno virtual (si no lo tienes creado)
+# 1. Creación del entorno virtual (si no existe)
 python -m venv venv
 
-# 2. Activar el entorno virtual
-# En Windows:
+# 2. Activación del entorno virtual
+# Para sistemas Windows:
 .\venv\Scripts\activate
-# En Linux/Mac:
+# Para sistemas Linux/Mac:
 source venv/bin/activate
 
-# 3. Instalar dependencias (DRF, JWT, CORS, etc.)
+# 3. Instalación de dependencias (DRF, JWT, CORS, entre otras)
 pip install -r requirements.txt
 
-# 4. Aplicar las migraciones a la base de datos
+# 4. Ejecución de migraciones de la base de datos
 python manage.py migrate
 
-# 5. Levantar el servidor de desarrollo
+# 5. Inicialización del servidor de desarrollo
 python manage.py runserver
 ```
-El backend quedará levantado en `http://127.0.0.1:8000`.
+El servicio de backend estará disponible en: `http://127.0.0.1:8000`.
 
-### 2. Levantar el Frontend (React + Vite)
-Abre una segunda terminal nueva o una pestaña adicional, dirígete a la carpeta `frontend` dentro de tu proyecto.
+### 2. Inicialización del Frontend (React + Vite)
+Abra una nueva instancia de terminal, navegue hacia el directorio `frontend` dentro de su proyecto.
 
 ```bash
-# 1. Entrar al directorio
+# 1. Acceso al directorio
 cd frontend
 
-# 2. Instalar todas las dependencias de Node.js
+# 2. Instalación de paquetes y dependencias de Node.js
 npm install
 
-# 3. Correr el servidor de desarrollo de Vite
+# 3. Ejecución del servidor de desarrollo de Vite
 npm run dev
 ```
-El frontend será accesible desde `http://localhost:5173`.
+La interfaz de usuario estará accesible a través de: `http://localhost:5173`.
 
 ---
 
-## 🏗️ Documentación del Sistema
+## 🏗️ Arquitectura y Seguridad del Sistema
 
-### Seguridad Basada en Roles (RBAC)
-StockVision cuenta con un motor interno para gestionar los permisos según el cargo del usuario (`ADMIN`, `JEFE_INVENTARIO`, `EMPLEADO`). 
-Con esto se garantizan vistas dedicadas y seguras desde el Frontend:
-- **`ADMIN`:** Tiene un Control Maestro; gestiona empresas, todos los usuarios y obtiene las métricas financieras más amplias.
-- **`JEFE_INVENTARIO`:** Acceso directo a control de inventario, stock bajo y alertas predictivas dentro de su empresa correspondiente.
-- **`EMPLEADO`:** Funciones limitadas al panel operativo diario y movimientos de mercancía a los que fue asignado.
+### Control de Acceso Basado en Roles (RBAC)
+StockVision implementa un motor de autorización interno para administrar los permisos de acuerdo al cargo del usuario (`ADMIN`, `JEFE_INVENTARIO`, `EMPLEADO`). 
+Esto garantiza niveles de acceso dedicados y operaciones seguras:
+- __ADMIN:__ Posee control total; gestiona empresas, administra usuarios y accede a métricas financieras globales.
+- __JEFE_INVENTARIO:__ Dispone de acceso directo al control de inventario, detección de stock crítico y pronósticos predictivos para su compañía asignada.
+- __EMPLEADO:__ Cuenta con funciones delimitadas al módulo operativo diario y ejecución de movimientos de mercancía autorizados.
 
-### Separación Inteligente de Vistas
-Para evitar pantallas sobrecargadas, creamos dos niveles de navegación principal:
-1. **Página de Inicio (`/inicio`):** Funciona como un punto de aterrizaje amigable. Da la bienvenida, muestra la marca StockVision (logo personalizado), informa la sesión vigente (nombre completo del empleado y cargo asignado), y sirve como portal principal antes de sumergirse en métricas.
-2. **Dashboard de Métricas (`/dashboard`):** Exclusivo para gerentes y administradores. Brinda acceso al instante a indicadores vitales:
-    - Productos totales
-    - Alertas críticas vigentes con línea de tiempo y urgencia explícita.
-    - Tasas de rotación (tiempo promedio en bodega).
-    - Gráfico dinámico automatizado de movimientos de mercancía por mes.
+### Diseño de Interfaz Optimizado
+Con el fin de prevenir la sobrecarga de información, el sistema implementa una jerarquía de navegación estructurada en dos niveles principales:
+1. __Portal de Inicio (`/inicio`):__ Funciona como punto de acceso principal. Presenta la identidad corporativa, detalla la información de la sesión activa (nombre de empleado y cargo), y actúa como interfaz de bienvenida.
+2. __Dashboard Analítico (`/dashboard`):__ Panel exclusivo para perfiles gerenciales y administrativos. Facilita acceso inmediato a indicadores de rendimiento clave (KPIs):
+    - Volumen total de productos.
+    - Alertas críticas activas con clasificación de urgencia.
+    - Tasas de rotación y tiempos promedios en almacén.
+    - Gráficas automatizadas de flujos de mercancía mensuales.
 
-### Cierre Automático de Sesión (Inactividad)
-Como refuerzo de las políticas de seguridad en sistemas críticos de inventarios, todo usuario de StockVision es supervisado en segundo plano. Mediante un `Custom Hook` llamado `AutoLogout`, si el sistema no registra movimiento del ratón, scrolls de pantalla o tecleos por un periodo de **15 minutos consecutivos**, los JWT (Tokens de Validación Local) serán destruidos irrevocablemente y forzará la pantalla de inicio de sesión de nuevo, previniendo accesos indeseados en escritorios desatendidos.
+### Protocolo de Inactividad y Cierre Automático
+Como medida de seguridad fundamental en el manejo de inventarios, las sesiones de usuario son monitoreadas continuamente de forma pasiva. A través del módulo `AutoLogout`, ante la ausencia de interacción (movimiento de cursor, desplazamiento o uso de teclado) por un lapso de __15 minutos__, los tokens de sesión (JWT) son invalidados permanentemente, redireccionando al usuario a la pantalla de autenticación.
 
-### Multi-Empresa Silencioso (Multitenant DB)
-El código en Backend está configurado mediante filtros silenciosos. El administrador maestro puede operar visualizando los bienes de cualquier sucursal o empresa instalada en StockVisión. Sin embargo, en el momento que personal de almacén accede, los QuerySets en el API limitan cualquier petición para proveer únicamente la data que coincida estrictamente a la compañía por la cual fueron contratados.
+### Aislamiento de Datos Multi-Empresa (Multitenant DB)
+El backend procesa la información mediante filtros de aislamiento de datos. Mientras que el administrador del sistema puede visualizar los activos de cualquier sucursal o empresa registrada, las consultas (QuerySets) del personal operativo están estrictamente restringidas para exponer únicamente la información correspondiente a su respectiva organización.
 
 ---
 
-## 👥 Creación Rápida de Usuarios de Prueba
-Para realizar pruebas exhaustivas de la plataforma (Roles, Permisos, Vistas y Sucursales), puedes generar automáticamente usuarios de todos los perfiles (`ADMIN`, `JEFE_INVENTARIO`, `EMPLEADO`, `VENDEDOR`) asignados a diferentes sedes ejecutando el siguiente comando:
+## 👥 Herramientas de Pruebas y Desarrollo
+Para propósitos de validación exhaustiva de la plataforma (Roles, Permisos, Vistas y Sucursales), es posible poblar la base de datos con perfiles de prueba automáticos (`ADMIN`, `JEFE_INVENTARIO`, `EMPLEADO`, `VENDEDOR`) en diversas sedes, mediante el siguiente comando:
 
 ```bash
 python create_test_users.py
 ```
-> **Credenciales por Defecto**: La contraseña para todos los usuarios generados será `12345`. (Ej. `admin_test_1`, `vend_test_1`, etc). Estos usuarios tendrán datos semilla para navegar por las pantallas correspondientes.
+> __Nota de Credenciales__: La contraseña asignada por defecto a todos los usuarios generados es `12345` (Ej. `admin_test_1`, `vend_test_1`). Estas cuentas incluyen datos preconfigurados para facilitar la evaluación de los módulos.
 
 ---
 
-## ⚠️ Posibles Errores o Mejoras Pendientes por Corregir
-A continuación se listan las mejoras técnicas y operativas pendientes para futuras versiones:
-1. **Falta de paginación en el Punto de Venta**: Si el catálogo de inventario crece a miles de productos, el POS podría ralentizarse al intentar renderizar todas las imágenes y tarjetas de forma simultánea. Se requiere paginación o *infinite scroll*.
-2. **Control de Concurrencia en Ventas**: Si dos vendedores intentan vender la última unidad del mismo producto exactamente al mismo tiempo, el inventario podría quedar en números negativos si no se implementa un bloqueo estricto en la base de datos (`select_for_update`).
-3. **Gestión de Sesiones de Caja**: Actualmente no se manejan "Aperturas y Cierres de Caja" en el Punto de Venta. Todas las ventas entran de corrido según el usuario y la fecha.
-4. **Imágenes de Productos**: Las imágenes subidas por el Administrador no sufren compresión en el Backend, lo que podría consumir el ancho de banda y almacenamiento del servidor rápidamente.
-5. **Reportes Completos**: Faltan opciones nativas de exportación a Excel/PDF masivas de todo el historial financiero y control estricto de mermas.
-6. **Recuperación de Contraseña**: El endpoint para correos de recuperación fallará en ambiente de producción si no se configuran las variables de entorno de un proveedor SMTP real en `settings.py`.
+## ⚠️ Oportunidades de Mejora y Mantenimiento Futuro
+Se identifican los siguientes puntos técnicos y funcionales para ser incorporados en próximas versiones (Roadmap):
+1. __Paginación en el Módulo POS__: Para catálogos extensos, la renderización simultánea en el Punto de Venta puede comprometer el rendimiento. Se proyecta la implementación de paginación o carga diferida (_infinite scroll_).
+2. __Resolución de Concurrencia Transaccional__: Para evitar inconsistencias de inventario ante ventas simultáneas del mismo producto final, se requiere establecer bloqueos a nivel de base de datos (`select_for_update`).
+3. __Módulo de Arqueos e Historial de Caja__: Expansión funcional del Punto de Venta para soportar operaciones estructuradas de "Apertura y Cierre de Caja".
+4. __Optimización Multimedia__: Implementación de procesamiento y compresión de imágenes de productos en el servidor para reducir el consumo de ancho de banda y capacidad de almacenamiento.
+5. __Reportes Avanzados__: Integración de utilidades nativas para la exportación masiva de historiales financieros (Excel/PDF) y auditorías de mermas de inventario.
+6. __Recuperación de Credenciales__: Configuración de variables de entorno con un servidor SMTP establecido en `settings.py` para habilitar el restablecimiento de contraseñas en entornos de producción.
 
 ---

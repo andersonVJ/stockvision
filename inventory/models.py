@@ -14,17 +14,24 @@ class Category(models.Model):
         return f"{self.name} - {self.company.name}"
 
 class Provider(models.Model):
+    TIPO_CHOICES = [
+        ('DISTRIBUIDOR', 'Distribuidor / Proveedor regular'),
+        ('TIENDA_MARCA', 'Tienda de Marca Oficial'),
+    ]
     name = models.CharField(max_length=200)
     contact = models.CharField(max_length=200, blank=True, null=True)
     phone = models.CharField(max_length=50, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     address = models.TextField(blank=True, null=True)
+    website = models.URLField(blank=True, null=True, help_text="Sitio web o tienda oficial")
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='DISTRIBUIDOR')
     company = models.ForeignKey('companies.Company', on_delete=models.CASCADE, related_name='providers')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.name} - {self.company.name}"
+        return f"{self.name} ({self.get_tipo_display()}) - {self.company.name}"
+
 
 class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='products')

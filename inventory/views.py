@@ -53,6 +53,37 @@ class ProviderViewSet(BaseInventoryViewSet):
         else:
             serializer.save(company=company)
 
+    @action(detail=False, methods=['post'], url_path='ensure_brand')
+    def ensure_brand(self, request):
+        """
+        Get or create a TIENDA_MARCA provider for the current company.
+        Accepts: { name, website (optional) }
+        Returns the provider record (existing or newly created).
+        """
+        from rest_framework.response import Response
+        name = request.data.get('name', '').strip()
+        website = request.data.get('website', '')
+        if not name:
+            return Response({'detail': 'El nombre de la marca es requerido.'}, status=400)
+        company = request.user.company
+        provider, created = Provider.objects.get_or_create(
+            name=name,
+            company=company,
+            defaults={
+                'tipo': 'TIENDA_MARCA',
+                'website': website,
+                'contact': 'Tienda oficial',
+            }
+        )
+        # If it already existed but wasn't marked as brand, upgrade it
+        if not created and provider.tipo != 'TIENDA_MARCA':
+            provider.tipo = 'TIENDA_MARCA'
+            if website:
+                provider.website = website
+            provider.save()
+        serializer = self.get_serializer(provider)
+        return Response(serializer.data, status=200)
+
 class ProductViewSet(BaseInventoryViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer

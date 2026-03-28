@@ -30,12 +30,13 @@ class DeliveryRouteSerializer(serializers.ModelSerializer):
     branch_name = serializers.ReadOnlyField(source='branch.name')
     total_paradas = serializers.SerializerMethodField()
     paradas_entregadas = serializers.SerializerMethodField()
+    internal_order_id = serializers.ReadOnlyField(source='internal_order.id')
 
     class Meta:
         model = DeliveryRoute
         fields = [
             'id', 'company', 'branch', 'branch_name',
-            'purchase_order', 'tipo', 'tipo_display', 'origin_supplier',
+            'purchase_order', 'internal_order', 'internal_order_id', 'tipo', 'tipo_display', 'origin_supplier',
             'fecha', 'zona', 'transportador', 'estado', 'estado_display', 'notas',
             'paradas', 'total_paradas', 'paradas_entregadas',
             'created_at', 'updated_at'

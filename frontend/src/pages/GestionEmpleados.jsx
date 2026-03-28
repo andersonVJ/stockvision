@@ -20,6 +20,7 @@ export default function GestionEmpleados() {
     cedula: "",
     role: "EMPLEADO",
     branch: "",
+    position: "",
     password: "",
     password_confirm: ""
   });
@@ -161,6 +162,7 @@ export default function GestionEmpleados() {
           cedula: "",
           role: "EMPLEADO",
           branch: "",
+          position: "",
           password: "",
           password_confirm: ""
         });
@@ -274,6 +276,7 @@ export default function GestionEmpleados() {
                                     cedula: emp.cedula || "",
                                     role: emp.role || "EMPLEADO",
                                     branch: emp.branch || "",
+                                    position: emp.position || "",
                                     password: "",
                                     password_confirm: ""
                                   });
@@ -436,6 +439,27 @@ export default function GestionEmpleados() {
                   >
                     <option value="">Ninguna o Toda la Empresa...</option>
                     {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {/* Cargo Operativo */}
+              {(user.role === "ADMIN" || user.role === "JEFE_INVENTARIO") && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Cargo Operativo
+                  </label>
+                  <select
+                    value={formData.position}
+                    onChange={(e) =>
+                      setFormData({ ...formData, position: e.target.value })
+                    }
+                    className="w-full border border-slate-300 rounded-lg py-2 px-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    <option value="">Sin cargo</option>
+                    <option value="BODEGA">Bodega</option>
+                    <option value="ALMACEN">Almacén</option>
+                    <option value="RECOGIDA">Recogida</option>
                   </select>
                 </div>
               )}

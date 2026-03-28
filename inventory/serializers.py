@@ -67,6 +67,13 @@ class OrderSerializer(serializers.ModelSerializer):
     created_by_name = serializers.ReadOnlyField(source='created_by.first_name')
     approved_by_name = serializers.ReadOnlyField(source='approved_by.first_name')
     branch_name = serializers.ReadOnlyField(source='branch.name')
+    branch_lat = serializers.ReadOnlyField(source='branch.latitud')
+    branch_lng = serializers.ReadOnlyField(source='branch.longitud')
+    provider_name = serializers.ReadOnlyField(source='provider.name')
+    provider_lat = serializers.ReadOnlyField(source='provider.latitud')
+    provider_lng = serializers.ReadOnlyField(source='provider.longitud')
+    company_lat = serializers.ReadOnlyField(source='company.latitud')
+    company_lng = serializers.ReadOnlyField(source='company.longitud')
     
     class Meta:
         model = Order

@@ -13,7 +13,7 @@ class BaseInventoryViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = super().get_queryset()
         
-        if user.is_staff or getattr(user, 'role', None) == 'ADMIN':
+        if user.is_superuser or user.is_staff:
             if hasattr(queryset.model, 'company') and user.company:
                 return queryset.filter(company=user.company)
             # Para modelos que tienen branch en lugar de company
@@ -21,7 +21,20 @@ class BaseInventoryViewSet(viewsets.ModelViewSet):
                 return queryset.filter(branch__company=user.company)
             return queryset
         
-        # Usuarios atados a una Sede (JEFE, EMPLEADO)
+        # Branch Admins and other Branch-bound users (JEFE, EMPLEADO)
+        if getattr(user, 'role', None) == 'ADMIN':
+            if getattr(user, 'branch', None):
+                if hasattr(queryset.model, 'branch'):
+                    return queryset.filter(branch=user.branch)
+                elif hasattr(queryset.model, 'venta'):
+                    return queryset.filter(venta__branch=user.branch)
+                elif hasattr(queryset.model, 'company') and user.company:
+                    # En inventario, un ADMIN sin acceso a DB completa solo ve su sede
+                    return queryset.filter(company=user.company)
+            else:
+                return queryset.none() # Sede form-bound admins with no branch are locked
+
+        # Usuarios atados a una Sede (JEFE, EMPLEADO, VENDEDOR)
         if hasattr(queryset.model, 'branch') and getattr(user, 'branch', None):
             return queryset.filter(branch=user.branch)
         elif hasattr(queryset.model, 'company') and user.company:
@@ -201,7 +214,7 @@ class StockMovementViewSet(BaseInventoryViewSet):
             inventory = serializer.validated_data.get('inventory')
             if inventory:
                 branch = inventory.branch
-        if company_id and (user.is_staff or getattr(user, 'is_admin', False)):
+        if company_id and (user.is_superuser or user.is_staff):
             stock_movement = serializer.save(user=user, company_id=company_id, branch=branch)
         else:
             stock_movement = serializer.save(user=user, company=company, branch=branch)
@@ -241,6 +254,23 @@ class OrderViewSet(BaseInventoryViewSet):
             if product_id and qty:
                 OrderItem.objects.create(order=order, product_id=product_id, requested_quantity=qty)
 
+        # If it was created as APPROVED, create the Delivery Route
+        if order.status == 'APPROVED':
+            from logistics.models import DeliveryRoute
+            from django.utils import timezone
+            if not DeliveryRoute.objects.filter(internal_order=order).exists():
+                DeliveryRoute.objects.create(
+                    company=order.company,
+                    branch=order.branch,
+                    internal_order=order,
+                    tipo='INTERNO',
+                    origin_supplier=order.provider.name if getattr(order, 'provider', None) else 'Sede Matriz',
+                    fecha=timezone.now().date(),
+                    zona='Pedido Directo',
+                    estado='PENDIENTE',
+                    notas=f"Ruta logística para Pedido #{order.id}"
+                )
+
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
         order = self.get_object()
@@ -255,6 +285,22 @@ class OrderViewSet(BaseInventoryViewSet):
         order.status = 'APPROVED'
         order.approved_by = user
         order.save()
+        
+        # Create a delivery route
+        from logistics.models import DeliveryRoute
+        from django.utils import timezone
+        if not DeliveryRoute.objects.filter(internal_order=order).exists():
+            DeliveryRoute.objects.create(
+                company=order.company,
+                branch=order.branch,
+                internal_order=order,
+                tipo='INTERNO',
+                origin_supplier=order.provider.name if getattr(order, 'provider', None) else 'Sede Matriz',
+                fecha=timezone.now().date(),
+                zona='Pedido Directo',
+                estado='PENDIENTE',
+                notas=f"Ruta logística para Pedido #{order.id}"
+            )
         
         return Response({'status': 'Pedido Aprobado'})
 
@@ -334,6 +380,13 @@ class OrderViewSet(BaseInventoryViewSet):
         order.status = 'DELIVERED'
         order.save()
         
+        # update associated DeliveryRoute if exists
+        from logistics.models import DeliveryRoute
+        route = DeliveryRoute.objects.filter(internal_order=order).first()
+        if route and route.estado != 'FINALIZADA':
+            route.estado = 'FINALIZADA'
+            route.save()
+        
         return Response({'status': 'Pedido Marcado como Entregado y Stock Actualizado'})
 
 class SaleViewSet(BaseInventoryViewSet):
@@ -355,9 +408,10 @@ class SaleViewSet(BaseInventoryViewSet):
             branch_id = self.request.data.get('branch')
             if branch_id:
                 from companies.models import Branch
-                if user.is_staff or getattr(user, 'role', None) == 'ADMIN':
+                if user.is_superuser or user.is_staff:
                     branch = Branch.objects.filter(id=branch_id).first()
                 else:
+                    # Solo puede a su propia empresa, pero como usuario sin branch (Raro), limitamos
                     branch = Branch.objects.filter(id=branch_id, company=user.company).first()
 
         if not branch:
@@ -483,13 +537,13 @@ class InventoryEntryViewSet(BaseInventoryViewSet):
             branch_id = self.request.data.get('branch')
             if branch_id:
                 from companies.models import Branch
-                if user.is_staff or getattr(user, 'role', None) == 'ADMIN':
+                if user.is_superuser or user.is_staff:
                     branch = Branch.objects.filter(id=branch_id).first()
                 else:
                     branch = Branch.objects.filter(id=branch_id, company=user.company).first()
 
         company_id = self.request.data.get('company')
-        effective_company_id = company_id if (company_id and (user.is_staff or getattr(user, 'is_admin', False))) else (company.id if company else None)
+        effective_company_id = company_id if (company_id and (user.is_superuser or user.is_staff)) else (company.id if company else None)
 
         entry = serializer.save(user=user, company_id=effective_company_id, branch=branch)
         

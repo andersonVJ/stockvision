@@ -2,6 +2,33 @@ import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import { getBranches, createBranch, updateBranch, deleteBranch, getCompanies } from "../services/inventoryService";
 import { showErrorAlert, showSuccessAlert, showConfirmAlert } from "../utils/alerts";
+import { Target } from "lucide-react";
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+
+function LocationMarker({ position, setPosition }) {
+  const map = useMapEvents({
+    click(e) { setPosition(e.latlng); }
+  });
+  useEffect(() => {
+    if (position) map.flyTo(position, 15);
+  }, [position, map]);
+  return position === null ? null : (
+    <Marker draggable={true} eventHandlers={{ dragend: (e) => setPosition(e.target.getLatLng()) }} position={position}>
+      <Popup>Ubicación de Sede</Popup>
+    </Marker>
+  )
+}
 
 export default function GestionSedes() {
   const [user, setUser] = useState({});
@@ -9,7 +36,8 @@ export default function GestionSedes() {
   const [loading, setLoading] = useState(true);
   
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ name: "", address: "", company: "" });
+  const [formData, setFormData] = useState({ name: "", address: "", company: "", latitud: "", longitud: "" });
+  const [mapPosition, setMapPosition] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
   
@@ -51,18 +79,25 @@ export default function GestionSedes() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const finalData = { ...formData };
+    if (mapPosition) {
+        finalData.latitud = Number(mapPosition.lat).toFixed(6);
+        finalData.longitud = Number(mapPosition.lng).toFixed(6);
+    }
+    
     try {
       if (isEditing) {
-        await updateBranch(editingId, formData);
+        await updateBranch(editingId, finalData);
         showSuccessAlert("Sede actualizada con éxito.");
       } else {
-        await createBranch(formData);
+        await createBranch(finalData);
         showSuccessAlert("Sede creada con éxito. Se generaron inventarios en 0 para los productos existentes.");
       }
       setShowModal(false);
       setIsEditing(false);
       setEditingId(null);
-      setFormData({ name: "", address: "", company: "" });
+      setFormData({ name: "", address: "", company: "", latitud: "", longitud: "" });
+      setMapPosition(null);
       loadBranches();
     } catch (err) {
       console.error(err.response?.data || err);
@@ -71,13 +106,24 @@ export default function GestionSedes() {
   };
 
   const handleEditBranch = (branch) => {
-    setFormData({ name: branch.name, address: branch.address || "", company: branch.company || "" });
+    setFormData({ 
+      name: branch.name, 
+      address: branch.address || "", 
+      company: branch.company || "",
+      latitud: branch.latitud || "",
+      longitud: branch.longitud || ""
+    });
+    if (branch.latitud && branch.longitud) {
+        setMapPosition({ lat: parseFloat(branch.latitud), lng: parseFloat(branch.longitud) });
+    } else {
+        setMapPosition(null);
+    }
     setEditingId(branch.id);
     setIsEditing(true);
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
+  const handleDeleteBranch = async (id) => {
     const isConfirmed = await showConfirmAlert("¿Eliminar Sede?", "Se eliminarán permanentemente los empleados e inventarios asociados a esta sede. Esta acción es irreversible.");
     if (!isConfirmed) return;
     try {
@@ -116,7 +162,8 @@ export default function GestionSedes() {
               {user.role === "ADMIN" && (
                 <button
                   onClick={() => {
-                    setFormData({ name: "", address: "", company: "" });
+                    setFormData({ name: "", address: "", company: "", latitud: "", longitud: "" });
+                    setMapPosition(null);
                     setIsEditing(false);
                     setEditingId(null);
                     setShowModal(true);
@@ -198,9 +245,32 @@ export default function GestionSedes() {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Dirección (Opcional)</label>
+                <div className="flex justify-between items-end mb-1">
+                  <label className="block text-sm font-medium text-slate-700">Dirección</label>
+                  <button type="button" onClick={async () => {
+                    if(!formData.address) { showErrorAlert("Ingresa una dirección primero"); return; }
+                    try {
+                      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.address)}`);
+                      const data = await res.json();
+                      if(data && data.length > 0) {
+                        setMapPosition({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
+                      } else { showErrorAlert("No se encontró ubicación"); }
+                    } catch(e) { showErrorAlert("Error en búsqueda"); }
+                  }} className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1">
+                    <Target className="w-3 h-3" /> Ubicar auto.
+                  </button>
+                </div>
                 <input type="text" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Calle Principal 123" />
               </div>
+
+              <div className="h-40 w-full rounded-xl overflow-hidden border border-slate-300 z-0">
+                  <MapContainer center={mapPosition || [4.6097, -74.0817]} zoom={mapPosition ? 15 : 5} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }}>
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
+                    <LocationMarker position={mapPosition} setPosition={setMapPosition} />
+                  </MapContainer>
+                  <p className="text-[10px] text-slate-400 text-center mt-1 outline-none">Arrastra el pin para centrar tu Sede.</p>
+              </div>
+
               <div className="flex justify-end gap-3 mt-6">
                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors">Cancelar</button>
                 <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">

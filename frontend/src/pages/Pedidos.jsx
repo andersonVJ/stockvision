@@ -3,7 +3,19 @@ import Sidebar from "../components/Sidebar";
 import { getOrders, createOrder, approveOrder, deliverOrder, rejectOrder } from "../services/orderService";
 import { getProducts, getBranches, getProviders } from "../services/inventoryService";
 import { showErrorAlert, showSuccessAlert, showWarningAlert } from "../utils/alerts";
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import L from 'leaflet';
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+import { Map } from "lucide-react";
 
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 export default function Pedidos() {
   const [user, setUser] = useState({});
   const [activeTab, setActiveTab] = useState("pendientes"); // pendientes, transito, historial
@@ -80,6 +92,7 @@ export default function Pedidos() {
     try {
       await createOrder({ 
         branch: selectedBranch,
+        provider: selectedProvider || null,
         items: itemsToSend 
       });
       setShowCreateModal(false);
@@ -140,6 +153,46 @@ export default function Pedidos() {
     } catch (err) {
       showErrorAlert("Error al recibir pedido");
     }
+  };
+
+  const handleAcceptAll = async (id) => {
+      if (!window.confirm("¿Está seguro de recibir la totalidad de los artículos de este pedido? Esto sumará todo el stock solicitado a su Sede.")) return;
+      try {
+          await deliverOrder(id, []);
+          showSuccessAlert("Pedido ingresado completamente");
+          loadData();
+      } catch (err) {
+          showErrorAlert("Error al recibir el pedido");
+      }
+  };
+
+  const [showRouteModal, setShowRouteModal] = useState(false);
+  const [routeData, setRouteData] = useState(null);
+  
+  const handleViewRoute = (order) => {
+    let origin = null;
+    let label = "";
+    if (order.provider && order.provider_lat && order.provider_lng) {
+        origin = [parseFloat(order.provider_lat), parseFloat(order.provider_lng)];
+        label = `Proveedor: ${order.provider_name}`;
+    } else if (order.company_lat && order.company_lng) {
+        origin = [parseFloat(order.company_lat), parseFloat(order.company_lng)];
+        label = "Sede Matriz (Pedido Interno)";
+    }
+    
+    let dest = null;
+    let destLabel = `Sede Destino: ${order.branch_name}`;
+    if (order.branch_lat && order.branch_lng) {
+        dest = [parseFloat(order.branch_lat), parseFloat(order.branch_lng)];
+    }
+    
+    if(!origin || !dest) {
+        showWarningAlert("No hay coordenadas configuradas suficientes para trazar la ruta de este pedido. Revise las ubicaciones de Proveedor/Compañía y Sucursal.");
+        return;
+    }
+    
+    setRouteData({ origin, originLabel: label, dest, destLabel, id: order.id });
+    setShowRouteModal(true);
   };
 
   const statusTags = {
@@ -208,6 +261,9 @@ export default function Pedidos() {
                         </ul>
                       </td>
                       <td className="px-6 py-4 text-right space-x-2">
+                        <button onClick={() => handleViewRoute(o)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-md text-xs font-bold transition-colors inline-flex items-center gap-1 mb-1">
+                           <Map className="w-3 h-3" /> Ruta
+                        </button>
                         {o.status === "PENDING_APPROVAL" && (role === "ADMIN" || role === "JEFE_INVENTARIO") && (
                           <>
                             <button onClick={() => handleApprove(o.id)} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-xs font-bold transition-colors">Aceptar</button>
@@ -373,6 +429,26 @@ export default function Pedidos() {
                 <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700">Confirmar Recepción</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ROUTE MODAL */}
+      {showRouteModal && routeData && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-8 rounded-2xl w-full max-w-4xl shadow-xl flex flex-col h-[80vh]">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-slate-800">Ruta del Pedido #{routeData.id}</h2>
+              <button onClick={() => setShowRouteModal(false)} className="text-slate-400 hover:text-slate-600 font-bold">Cerrar X</button>
+            </div>
+            <div className="flex-1 rounded-2xl overflow-hidden border border-slate-200 z-0 relative bg-slate-100">
+               <MapContainer center={routeData.origin} zoom={6} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }}>
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
+                  <Marker position={routeData.origin}><Popup><strong>Origen:</strong><br/>{routeData.originLabel}</Popup></Marker>
+                  <Marker position={routeData.dest}><Popup><strong>Destino:</strong><br/>{routeData.destLabel}</Popup></Marker>
+                  <Polyline positions={[routeData.origin, routeData.dest]} color="#3b82f6" weight={4} opacity={0.8} dashArray="10, 10" />
+               </MapContainer>
+            </div>
           </div>
         </div>
       )}

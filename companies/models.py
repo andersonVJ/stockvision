@@ -26,6 +26,8 @@ class PasswordResetToken(models.Model):
 class Company(models.Model):
     name = models.CharField(max_length=200)
     address = models.CharField(max_length=255)
+    latitud = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True, help_text="Latitud para el mapa")
+    longitud = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True, help_text="Longitud para el mapa")
     phone = models.CharField(max_length=20)
     email = models.EmailField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -38,6 +40,8 @@ class Branch(models.Model):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='branches')
     name = models.CharField(max_length=200)
     address = models.CharField(max_length=255, blank=True, null=True)
+    latitud = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True, help_text="Latitud para el mapa")
+    longitud = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True, help_text="Longitud para el mapa")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

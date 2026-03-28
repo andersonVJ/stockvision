@@ -176,6 +176,51 @@ export default function OrdenesCompra() {
         } catch { Swal.fire({ icon: "error", title: "Error al recibir", confirmButtonColor: "#2563eb" }); }
     };
 
+    const handleAcceptAll = async (id) => {
+        const r = await Swal.fire({ 
+            title: "¿Recibir pedido completo?", 
+            text: "Esto sumará todo el stock solicitado a tu inventario de inmediato.",
+            icon: "question", 
+            showCancelButton: true, 
+            confirmButtonColor: "#16a34a", 
+            cancelButtonText: "Cancelar",
+            confirmButtonText: "Sí, Aceptar Todo"
+        });
+        if (!r.isConfirmed) return;
+        try { 
+            await deliverOrder(id, []); 
+            loadPedidos(); 
+            Swal.fire({ icon: "success", title: "¡Pedido ingresado completamente!", confirmButtonColor: "#16a34a" });
+        } catch { Swal.fire({ icon: "error", title: "Error al recibir", confirmButtonColor: "#2563eb" }); }
+    };
+
+    const handleAcceptAllGeneral = async () => {
+        const transitoOrders = orders.filter(o => ["APPROVED", "IN_TRANSIT"].includes(o.status));
+        if (transitoOrders.length === 0) return;
+
+        const r = await Swal.fire({ 
+            title: `¿Recibir ${transitoOrders.length} pedido(s) pendientes?`, 
+            text: "Esto ingresará de golpe todo el stock de las filas mostradas en esta sección.",
+            icon: "warning", 
+            showCancelButton: true, 
+            confirmButtonColor: "#16a34a", 
+            cancelButtonText: "Cancelar",
+            confirmButtonText: "Sí, Recibir Todo"
+        });
+        if (!r.isConfirmed) return;
+
+        Swal.fire({ title: "Procesando...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        
+        try { 
+            await Promise.all(transitoOrders.map(o => deliverOrder(o.id, [])));
+            loadPedidos(); 
+            Swal.fire({ icon: "success", title: "¡Todos los pedidos fueron ingresados con éxito!", confirmButtonColor: "#16a34a" });
+        } catch { 
+            loadPedidos();
+            Swal.fire({ icon: "error", title: "Error", text: "Hubo un problema al procesar algunos pedidos.", confirmButtonColor: "#2563eb" }); 
+        }
+    };
+
     // ── Órdenes de Compra (proveedor externo) ─────────────────────────────────
     const [ordenes, setOrdenes] = useState([]);
     const [sugerencias, setSugerencias] = useState([]);
@@ -357,6 +402,11 @@ export default function OrdenesCompra() {
                                 </button>
                             </div>
                             <div className="flex gap-2">
+                                {pedidosTab === "transito" && filteredOrders().length > 0 && (
+                                    <button onClick={handleAcceptAllGeneral} className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white border border-green-700 rounded-xl hover:bg-green-700 text-sm font-semibold shadow-sm transition-colors">
+                                        <CheckCircle className="w-4 h-4" /> Recibir Todo
+                                    </button>
+                                )}
                                 <button onClick={loadPedidos} className="flex items-center gap-1.5 px-3 py-2 text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-sm font-medium">
                                     <RefreshCw className="w-4 h-4" /> Actualizar
                                 </button>
@@ -408,7 +458,7 @@ export default function OrdenesCompra() {
                                                             <button onClick={() => handleReject(o.id)} className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-bold">Denegar</button>
                                                         </>)}
                                                         {["APPROVED", "IN_TRANSIT"].includes(o.status) && (
-                                                            <button onClick={() => openDeliverModal(o)} className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold">Recibir Mercancía</button>
+                                                            <button onClick={() => openDeliverModal(o)} className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors shadow-sm">Recibir Mercancía</button>
                                                         )}
                                                     </td>
                                                 </tr>

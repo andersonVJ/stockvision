@@ -2,7 +2,34 @@ import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import { getProviders, createProvider, updateProvider, deleteProvider, getCompanies, getInventories, getProducts, getCategories } from "../services/inventoryService";
 import { showErrorAlert, showSuccessAlert, showConfirmAlert } from "../utils/alerts";
-import { Plus, Edit2, Trash2, Building, Mail, Phone, MapPin, User as UserIcon, Package } from "lucide-react";
+import { Plus, Edit2, Trash2, Building, Mail, Phone, MapPin, User as UserIcon, Package, Target } from "lucide-react";
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+
+function LocationMarker({ position, setPosition }) {
+  const map = useMapEvents({
+    click(e) { setPosition(e.latlng); }
+  });
+  useEffect(() => {
+    if (position) map.flyTo(position, 15);
+  }, [position, map]);
+  
+  return position === null ? null : (
+    <Marker draggable={true} eventHandlers={{ dragend: (e) => setPosition(e.target.getLatLng()) }} position={position}>
+      <Popup>Ubicación</Popup>
+    </Marker>
+  )
+}
 
 export default function GestionProveedores() {
   const [user, setUser] = useState({});
@@ -12,7 +39,8 @@ export default function GestionProveedores() {
   // Modal State
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ name: "", contact: "", phone: "", email: "", address: "", company: "" });
+  const [formData, setFormData] = useState({ name: "", contact: "", phone: "", email: "", address: "", company: "", latitud: "", longitud: "" });
+  const [mapPosition, setMapPosition] = useState(null);
 
   const [companies, setCompanies] = useState([]);
   const [showMerchandiseModal, setShowMerchandiseModal] = useState(false);
@@ -76,11 +104,19 @@ export default function GestionProveedores() {
         phone: provider.phone || "",
         email: provider.email || "",
         address: provider.address || "",
-        company: provider.company || ""
+        company: provider.company || "",
+        latitud: provider.latitud || "",
+        longitud: provider.longitud || ""
       });
+      if (provider.latitud && provider.longitud) {
+          setMapPosition({ lat: parseFloat(provider.latitud), lng: parseFloat(provider.longitud) });
+      } else {
+          setMapPosition(null);
+      }
     } else {
       setEditingId(null);
-      setFormData({ name: "", contact: "", phone: "", email: "", address: "", company: "" });
+      setFormData({ name: "", contact: "", phone: "", email: "", address: "", company: "", latitud: "", longitud: "" });
+      setMapPosition(null);
     }
     setShowModal(true);
   };
@@ -102,11 +138,16 @@ export default function GestionProveedores() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const finalData = { ...formData };
+    if (mapPosition) {
+        finalData.latitud = Number(mapPosition.lat).toFixed(6);
+        finalData.longitud = Number(mapPosition.lng).toFixed(6);
+    }
     try {
       if (editingId) {
-        await updateProvider(editingId, formData);
+        await updateProvider(editingId, finalData);
       } else {
-        await createProvider(formData);
+        await createProvider(finalData);
       }
       setShowModal(false);
       showSuccessAlert("Proveedor guardado con éxito");
@@ -180,6 +221,22 @@ export default function GestionProveedores() {
               <div className="flex items-end">
                 <button onClick={() => { setProviderCatFilter(""); setProviderBranchFilter(""); }} className="px-5 py-2.5 text-slate-500 hover:text-slate-800 text-sm font-bold bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">Limpiar</button>
               </div>
+            </div>
+          )}
+
+          {!loading && providers.length > 0 && (
+            <div className="w-full h-80 mb-6 rounded-2xl overflow-hidden shadow-sm border border-slate-200 relative z-0">
+               <MapContainer center={[4.6097, -74.0817]} zoom={5} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }}>
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
+                  {providers.filter(p => p.latitud && p.longitud).map(p => (
+                      <Marker key={p.id} position={[parseFloat(p.latitud), parseFloat(p.longitud)]}>
+                          <Popup>
+                             <div className="font-bold">{p.name}</div>
+                             <div className="text-xs text-slate-500">{p.address}</div>
+                          </Popup>
+                      </Marker>
+                  ))}
+               </MapContainer>
             </div>
           )}
 
@@ -296,8 +353,29 @@ export default function GestionProveedores() {
                 </div>
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Dirección</label>
+                <div className="flex justify-between items-end mb-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase block">Dirección</label>
+                  <button type="button" onClick={async () => {
+                    if(!formData.address) { showErrorAlert("Ingresa una dirección primero"); return; }
+                    try {
+                      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.address)}`);
+                      const data = await res.json();
+                      if(data && data.length > 0) {
+                        setMapPosition({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
+                      } else { showErrorAlert("No se encontró ubicación"); }
+                    } catch(e) { showErrorAlert("Error en búsqueda"); }
+                  }} className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1">
+                    <Target className="w-3 h-3" /> Ubicar auto.
+                  </button>
+                </div>
                 <textarea rows="2" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} className="w-full border border-slate-200 p-2.5 rounded-xl bg-slate-50 outline-none focus:border-blue-500 focus:bg-white transition-colors resize-none"></textarea>
+              </div>
+              <div className="h-40 w-full rounded-xl overflow-hidden border border-slate-200 z-0">
+                  <MapContainer center={mapPosition || [4.6097, -74.0817]} zoom={mapPosition ? 15 : 5} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }}>
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
+                    <LocationMarker position={mapPosition} setPosition={setMapPosition} />
+                  </MapContainer>
+                  <p className="text-[10px] text-slate-400 text-center mt-1">Arrastra el pin para ajustar la ubicación.</p>
               </div>
               <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100">
                 <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2.5 text-slate-600 font-medium hover:bg-slate-100 rounded-xl transition-colors">Cancelar</button>

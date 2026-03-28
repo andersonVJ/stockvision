@@ -23,6 +23,8 @@ class Provider(models.Model):
     phone = models.CharField(max_length=50, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     address = models.TextField(blank=True, null=True)
+    latitud = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True, help_text="Latitud para el mapa")
+    longitud = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True, help_text="Longitud para el mapa")
     website = models.URLField(blank=True, null=True, help_text="Sitio web o tienda oficial")
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='DISTRIBUIDOR')
     company = models.ForeignKey('companies.Company', on_delete=models.CASCADE, related_name='providers')
@@ -110,6 +112,7 @@ class Order(models.Model):
     
     company = models.ForeignKey('companies.Company', on_delete=models.CASCADE, related_name='orders')
     branch = models.ForeignKey('companies.Branch', on_delete=models.CASCADE, related_name='orders', null=True, blank=True)
+    provider = models.ForeignKey('inventory.Provider', on_delete=models.SET_NULL, related_name='orders', null=True, blank=True, help_text="Proveedor origen del pedido. Si está vacío, es pedido interno.")
     created_by = models.ForeignKey('users.User', on_delete=models.PROTECT, related_name='created_orders')
     approved_by = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_orders')
     

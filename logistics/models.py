@@ -10,6 +10,7 @@ class DeliveryRoute(models.Model):
     TIPO_CHOICES = [
         ('SALIDA', 'Salida — Entrega a cliente'),
         ('ENTRADA', 'Entrada — Recepción de proveedor'),
+        ('INTERNO', 'Traslado — Pedido Interno'),
     ]
 
     company = models.ForeignKey(
@@ -23,6 +24,11 @@ class DeliveryRoute(models.Model):
         'logistics.PurchaseOrder', on_delete=models.SET_NULL,
         null=True, blank=True, related_name='delivery_routes',
         help_text='OC asociada (solo para rutas tipo ENTRADA)'
+    )
+    internal_order = models.ForeignKey(
+        'inventory.Order', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='internal_routes',
+        help_text='Pedido Interno asociado (solo para rutas tipo INTERNO)'
     )
     tipo = models.CharField(max_length=10, choices=TIPO_CHOICES, default='SALIDA')
     origin_supplier = models.CharField(max_length=200, blank=True, null=True,

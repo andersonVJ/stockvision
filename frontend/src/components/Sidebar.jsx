@@ -49,7 +49,7 @@ export default function Sidebar() {
         { name: "Historial de Ventas", path: "/ventas", icon: <Receipt className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO", "VENDEDOR"] },
         { name: "Clientes", path: "/clientes", icon: <Users className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO", "VENDEDOR"] },
         { name: "Pedidos y Compras", path: "/compras", icon: <ClipboardList className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO", "VENDEDOR"] },
-        { name: "Rutas de Entrega", path: "/logistica", icon: <Route className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO"] },
+        { name: "Rutas de Entrega", path: "/logistica", icon: <Route className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO", "VENDEDOR"] },
         { name: "Predicción IA", path: "/predictions", icon: <TrendingUp className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO"] },
         { name: "Empleados", path: "/empleados", icon: <Users className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO"] }
     ];
@@ -107,15 +107,8 @@ export default function Sidebar() {
                     onClick={() => navigate("/perfil")}
                     className="w-full flex items-center px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-colors group"
                 >
-                    <User className="w-[18px] h-[18px] mr-3 text-slate-400 group-hover:text-slate-600" />
-                    Mi Perfil
-                </button>
-                <button
-                    onClick={() => navigate("/config")}
-                    className="w-full flex items-center px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-colors group"
-                >
                     <Settings className="w-[18px] h-[18px] mr-3 text-slate-400 group-hover:text-slate-600" />
-                    Configuración
+                    Perfil y Configuración
                 </button>
                 <button
                     onClick={handleLogout}

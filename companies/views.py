@@ -39,11 +39,9 @@ class CompanyViewSet(viewsets.ModelViewSet):
 
         user = self.request.user
 
-        # ADMIN puede ver todas las empresas
-        if user.is_staff or getattr(user, "role", None) == "ADMIN":
+        # ADMIN SuperUser puede ver todas las empresas, branch admins solo su empresa.
+        if user.is_superuser or user.is_staff:
             return Company.objects.all()
-
-        # Usuario normal solo ve su empresa
         elif getattr(user, "company", None):
             return Company.objects.filter(id=user.company.id)
 
@@ -56,7 +54,7 @@ class BranchViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff or getattr(user, "role", None) == "ADMIN":
+        if user.is_superuser or user.is_staff:
             if user.company:
                 return Branch.objects.filter(company=user.company)
             return Branch.objects.all()

@@ -22,8 +22,21 @@ class BaseLogisticsViewSet(viewsets.ModelViewSet):
         user = self.request.user
         qs = super().get_queryset()
         company = user.company
-        if company:
+        
+        if not company:
+            return qs.none()
+
+        if user.is_superuser or user.is_staff:
             return qs.filter(company=company)
+
+        if user.branch:
+            if hasattr(qs.model, 'branch'):
+                return qs.filter(company=company, branch=user.branch)
+            elif hasattr(qs.model, 'venta'):
+                return qs.filter(venta__branch=user.branch)
+            elif hasattr(qs.model, 'orden'):
+                return qs.filter(orden__branch=user.branch)
+
         return qs.none()
 
 
@@ -138,8 +151,46 @@ class DeliveryRouteViewSet(BaseLogisticsViewSet):
                 {'detail': f'Estado inválido. Opciones: {valid_states}'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+            
+        old_estado = ruta.estado
         ruta.estado = nuevo_estado
         ruta.save()
+        
+        # Sincronización automática de Pedidos Internos
+        if ruta.tipo == 'INTERNO' and ruta.internal_order:
+            order = ruta.internal_order
+            if nuevo_estado == 'EN_CURSO' and order.status != 'IN_TRANSIT':
+                order.status = 'IN_TRANSIT'
+                order.save()
+            elif nuevo_estado == 'FINALIZADA' and old_estado != 'FINALIZADA' and order.status != 'DELIVERED':
+                user = request.user
+                from inventory.models import Inventory, StockMovement
+                for item in order.items.all():
+                    rec_qty = item.requested_quantity
+                    item.received_quantity = rec_qty
+                    item.save()
+                    if rec_qty > 0:
+                        target_branch = order.branch or user.branch
+                        if target_branch:
+                            inventory, _ = Inventory.objects.get_or_create(
+                                product=item.product,
+                                branch=target_branch,
+                                defaults={'quantity': 0, 'min_stock': 5, 'max_stock': 100}
+                            )
+                            StockMovement.objects.create(
+                                inventory=inventory,
+                                company=order.company,
+                                branch=target_branch,
+                                user=user,
+                                movement_type='ENTRY',
+                                quantity=rec_qty,
+                                notes=f"Recepción Automática via Ruta #{ruta.id} (Pedido #{order.id})"
+                            )
+                            inventory.quantity += rec_qty
+                            inventory.save()
+                order.status = 'DELIVERED'
+                order.save()
+                
         return Response(self.get_serializer(ruta).data)
 
 

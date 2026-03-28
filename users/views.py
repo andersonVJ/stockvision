@@ -50,12 +50,18 @@ class EmployeeListCreateView(generics.ListCreateAPIView):
     serializer_class = UserSerializer
 
     def get_queryset(self):
-        # Todos los usuarios que tienen rol distinto a ADMIN (o si es admin, puede ver a todos)
         user = self.request.user
-        if user.is_admin:
+        if user.is_superuser or user.is_staff:
             if user.company:
                 return User.objects.filter(company=user.company).order_by('-date_joined')
             return User.objects.all().order_by('-date_joined')
+        
+        # Branch Admins solo ven la gente de su Sede (y a sí mismos)
+        elif user.is_admin:
+            if user.branch:
+                return User.objects.filter(branch=user.branch).order_by('-date_joined')
+            return User.objects.none()
+            
         elif user.is_jefe_inventario:
             # Jefe solo puede ver EMPLEADO y VENDEDOR de su sede
             return User.objects.filter(role__in=[User.EMPLEADO, User.VENDEDOR], branch=user.branch).order_by('-date_joined')

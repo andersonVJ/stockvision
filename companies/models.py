@@ -42,11 +42,26 @@ class Branch(models.Model):
     address = models.CharField(max_length=255, blank=True, null=True)
     latitud = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True, help_text="Latitud para el mapa")
     longitud = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True, help_text="Longitud para el mapa")
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.name} ({self.company.name})"
+
+class SystemParameter(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='parameters')
+    key = models.CharField(max_length=100)
+    value = models.TextField()
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('company', 'key')
+
+    def __str__(self):
+        return f"{self.key} - {self.company.name}"
 
 class Client(models.Model):
     id_document = models.CharField(max_length=50, verbose_name="Cédula/NIT")

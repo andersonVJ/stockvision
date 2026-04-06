@@ -63,19 +63,58 @@ class Product(models.Model):
     def __str__(self):
         return f"[{self.sku}] {self.name}"
 
+import uuid
+
+class UnitOfMeasure(models.Model):
+    company = models.ForeignKey('companies.Company', on_delete=models.CASCADE)
+    name = models.CharField(max_length=50)
+    code = models.CharField(max_length=15)
+    base_unit = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL)
+    conversion_factor = models.DecimalField(max_digits=10, decimal_places=4, default=1.0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
+class Tax(models.Model):
+    company = models.ForeignKey('companies.Company', on_delete=models.CASCADE)
+    name = models.CharField(max_length=50)
+    percentage = models.DecimalField(max_digits=5, decimal_places=2)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.percentage}%)"
+
+class Warehouse(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    branch = models.ForeignKey('companies.Branch', on_delete=models.CASCADE, related_name='warehouses')
+    name = models.CharField(max_length=200)
+    type = models.CharField(max_length=20, choices=[
+        ('SALES', 'Piso de Ventas'), 
+        ('STORAGE', 'Bodega Principal'), 
+        ('QUARANTINE', 'Cuarentena/Garantías'),
+        ('TRANSIT', 'Tránsito')
+    ], default='STORAGE')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.branch.name}"
+
 class Inventory(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='inventories')
-    branch = models.ForeignKey('companies.Branch', on_delete=models.CASCADE, related_name='inventories')
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, related_name='inventories')
     quantity = models.IntegerField(default=0)
     min_stock = models.IntegerField(default=5)
     max_stock = models.IntegerField(default=100)
     last_updated = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('product', 'branch')
+        unique_together = ('product', 'warehouse')
 
     def __str__(self):
-        return f"Inventory for {self.product.name} at {self.branch.name}"
+        return f"Inventory for {self.product.name} at {self.warehouse.name}"
 
 class StockMovement(models.Model):
     ENTRY = 'ENTRY'
@@ -91,7 +130,8 @@ class StockMovement(models.Model):
     movement_type = models.CharField(max_length=15, choices=MOVEMENT_CHOICES)
     quantity = models.IntegerField()
     company = models.ForeignKey('companies.Company', on_delete=models.CASCADE)
-    branch = models.ForeignKey('companies.Branch', on_delete=models.CASCADE, related_name='movements', null=True)
+    branch = models.ForeignKey('companies.Branch', on_delete=models.CASCADE, related_name='movements', null=True, blank=True)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, related_name='movements', null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     notes = models.TextField(blank=True, null=True)
     
@@ -182,3 +222,36 @@ class InventoryEntry(models.Model):
 
     def __str__(self):
         return f"Entry of {self.quantity} for {self.product.name} on {self.date}"
+
+class InternalTransfer(models.Model):
+    DRAFT = 'DRAFT'
+    IN_TRANSIT = 'TRANSIT'
+    COMPLETED = 'COMPLETED'
+    CANCELLED = 'CANCELLED'
+    STATUS_CHOICES = [
+        (DRAFT, 'Borrador'),
+        (IN_TRANSIT, 'En Tránsito'),
+        (COMPLETED, 'Completada'),
+        (CANCELLED, 'Cancelada'),
+    ]
+
+    company = models.ForeignKey('companies.Company', on_delete=models.CASCADE)
+    source_warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name='outgoing_transfers')
+    dest_warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name='incoming_transfers')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=DRAFT)
+    requested_by = models.ForeignKey('users.User', on_delete=models.PROTECT, related_name="transfers_requested")
+    approved_by = models.ForeignKey('users.User', on_delete=models.PROTECT, null=True, blank=True, related_name="transfers_approved")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Transfer #{self.id} from {self.source_warehouse.name} to {self.dest_warehouse.name} ({self.status})"
+
+class InternalTransferItem(models.Model):
+    transfer = models.ForeignKey(InternalTransfer, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    requested_quantity = models.PositiveIntegerField()
+    received_quantity = models.PositiveIntegerField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.requested_quantity}x {self.product.name} (Transfer #{self.transfer.id})"

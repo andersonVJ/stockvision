@@ -4,43 +4,12 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import Category, Product, Inventory, StockMovement, Order, OrderItem, Sale, SaleItem, Provider, InventoryEntry
 from .serializers import CategorySerializer, ProductSerializer, InventorySerializer, StockMovementSerializer, OrderSerializer, OrderItemSerializer, SaleSerializer, SaleItemSerializer, ProviderSerializer, InventoryEntrySerializer
-from .permissions import IsInventoryManagerOrReadOnly
+from core.permissions import IsInventoryManagerOrReadOnly
+from core.filters import CompanyFilterBackend
 
 class BaseInventoryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsInventoryManagerOrReadOnly]
-
-    def get_queryset(self):
-        user = self.request.user
-        queryset = super().get_queryset()
-        
-        if user.is_superuser or user.is_staff:
-            if hasattr(queryset.model, 'company') and user.company:
-                return queryset.filter(company=user.company)
-            # Para modelos que tienen branch en lugar de company
-            elif hasattr(queryset.model, 'branch') and user.company:
-                return queryset.filter(branch__company=user.company)
-            return queryset
-        
-        # Branch Admins and other Branch-bound users (JEFE, EMPLEADO)
-        if getattr(user, 'role', None) == 'ADMIN':
-            if getattr(user, 'branch', None):
-                if hasattr(queryset.model, 'branch'):
-                    return queryset.filter(branch=user.branch)
-                elif hasattr(queryset.model, 'venta'):
-                    return queryset.filter(venta__branch=user.branch)
-                elif hasattr(queryset.model, 'company') and user.company:
-                    # En inventario, un ADMIN sin acceso a DB completa solo ve su sede
-                    return queryset.filter(company=user.company)
-            else:
-                return queryset.none() # Sede form-bound admins with no branch are locked
-
-        # Usuarios atados a una Sede (JEFE, EMPLEADO, VENDEDOR)
-        if hasattr(queryset.model, 'branch') and getattr(user, 'branch', None):
-            return queryset.filter(branch=user.branch)
-        elif hasattr(queryset.model, 'company') and user.company:
-            return queryset.filter(company=user.company)
-            
-        return queryset.none()
+    filter_backends = [CompanyFilterBackend]
 
 class CategoryViewSet(BaseInventoryViewSet):
     queryset = Category.objects.all()
@@ -209,27 +178,31 @@ class StockMovementViewSet(BaseInventoryViewSet):
         company_id = self.request.data.get('company')
         user = self.request.user
         company = user.company
-        branch = user.branch
-        if not branch:
+        
+        # Un movimiento manual de stock requiere definir warehouse
+        warehouse = serializer.validated_data.get('warehouse')
+        if not warehouse:
             inventory = serializer.validated_data.get('inventory')
             if inventory:
-                branch = inventory.branch
-        if company_id and (user.is_superuser or user.is_staff):
-            stock_movement = serializer.save(user=user, company_id=company_id, branch=branch)
-        else:
-            stock_movement = serializer.save(user=user, company=company, branch=branch)
+                warehouse = inventory.warehouse
         
-        # Update the actual inventory quantity based on the movement
+        if company_id and (user.is_superuser or user.is_staff):
+            stock_movement = serializer.save(user=user, company_id=company_id, warehouse=warehouse)
+        else:
+            stock_movement = serializer.save(user=user, company=company, warehouse=warehouse)
+        
         inventory = stock_movement.inventory
-        if stock_movement.movement_type == 'ENTRY':
-            inventory.quantity += stock_movement.quantity
-        elif stock_movement.movement_type == 'EXIT':
-            inventory.quantity -= stock_movement.quantity
-        elif stock_movement.movement_type == 'ADJUSTMENT':
-            # For adjustments, the quantity can be positive or negative
-            inventory.quantity += stock_movement.quantity
-            
-        inventory.save()
+        
+        from django.db import transaction
+        with transaction.atomic():
+            inv = Inventory.objects.select_for_update().get(id=inventory.id)
+            if stock_movement.movement_type == 'ENTRY':
+                inv.quantity += stock_movement.quantity
+            elif stock_movement.movement_type == 'EXIT':
+                inv.quantity -= stock_movement.quantity
+            elif stock_movement.movement_type == 'ADJUSTMENT':
+                inv.quantity += stock_movement.quantity
+            inv.save()
 
 class OrderViewSet(BaseInventoryViewSet):
     queryset = Order.objects.all()
@@ -328,57 +301,28 @@ class OrderViewSet(BaseInventoryViewSet):
         if order.status != 'APPROVED' and order.status != 'IN_TRANSIT':
             return Response({'error': 'Este pedido no puede ser recibido'}, status=400)
             
-        # The request data should contain {"items": [{"id": item_id, "received_quantity": qty}]}
         items_data = request.data.get('items', [])
         received_items_map = {item['id']: item.get('received_quantity') for item in items_data if 'id' in item}
         
-        # We need to process each order item
-        for item in order.items.all():
-            rec_qty = received_items_map.get(item.id)
-            if rec_qty is None:
-                # If not provided, assume they received what they requested
-                rec_qty = item.requested_quantity
-                
-            item.received_quantity = rec_qty
-            item.save()
+        target_branch = order.branch
+        if not target_branch:
+            target_branch = user.branch
+        if not target_branch:
+            target_branch_id = request.data.get('branch')
+            if target_branch_id:
+                from companies.models import Branch
+                target_branch = Branch.objects.filter(id=target_branch_id).first()
+        if not target_branch:
+            from companies.models import Branch
+            target_branch = Branch.objects.filter(company=order.company).first()
             
-            # create stock movement
-            if rec_qty > 0:
-                target_branch = order.branch
-                if not target_branch:
-                    target_branch = user.branch
-                if not target_branch:
-                    target_branch_id = request.data.get('branch')
-                    if target_branch_id:
-                        from companies.models import Branch
-                        target_branch = Branch.objects.filter(id=target_branch_id).first()
-                if not target_branch:
-                    from companies.models import Branch
-                    target_branch = Branch.objects.filter(company=order.company).first()
-                
-                from inventory.models import Inventory
-                inventory, created = Inventory.objects.get_or_create(
-                    product=item.product,
-                    branch=target_branch,
-                    defaults={'quantity': 0, 'min_stock': 5, 'max_stock': 100}
-                )
-
-                StockMovement.objects.create(
-                    inventory=inventory,
-                    company=order.company,
-                    branch=target_branch,
-                    user=user,
-                    movement_type='ENTRY',
-                    quantity=rec_qty,
-                    notes=f"Recepción de Pedido #{order.id}"
-                )
-                
-                # update actual inventory
-                inventory.quantity += rec_qty
-                inventory.save()
+        from .services import InventoryService
+        from rest_framework.exceptions import ValidationError
         
-        order.status = 'DELIVERED'
-        order.save()
+        try:
+            InventoryService.process_order_delivery(order, received_items_map, user, target_branch)
+        except ValidationError as e:
+            return Response({'error': str(e)}, status=400)
         
         # update associated DeliveryRoute if exists
         from logistics.models import DeliveryRoute
@@ -411,11 +355,10 @@ class SaleViewSet(BaseInventoryViewSet):
                 if user.is_superuser or user.is_staff:
                     branch = Branch.objects.filter(id=branch_id).first()
                 else:
-                    # Solo puede a su propia empresa, pero como usuario sin branch (Raro), limitamos
                     branch = Branch.objects.filter(id=branch_id, company=user.company).first()
 
+        from rest_framework.exceptions import ValidationError
         if not branch:
-            from rest_framework.exceptions import ValidationError
             raise ValidationError("No tienes una sede asignada para realizar ventas o no seleccionaste ninguna.")
             
         status = self.request.data.get('status', 'COMPLETED')
@@ -438,49 +381,10 @@ class SaleViewSet(BaseInventoryViewSet):
                 )
 
         sale = serializer.save(branch=branch, user=user, status=status, invoice_type=invoice_type, client=client)
-        
         items_data = self.request.data.get('items', [])
-        total = 0
-        from rest_framework.exceptions import ValidationError
         
-        for item in items_data:
-            product_id = item.get('product')
-            quantity = int(item.get('quantity', 0))
-            if product_id and quantity > 0:
-                try:
-                    product = Product.objects.get(id=product_id)
-                except Product.DoesNotExist:
-                    raise ValidationError(f"Producto {product_id} no existe")
-                    
-                price = product.price
-                SaleItem.objects.create(sale=sale, product=product, quantity=quantity, price_at_sale=price)
-                total += float(price) * quantity
-                
-                # Descontamos stock del inventario de LA SEDE
-                try:
-                    inventory = Inventory.objects.get(product=product, branch=branch)
-                except Inventory.DoesNotExist:
-                    raise ValidationError(f"Inventario para {product.name} no encontrado en tu sede.")
-                
-                if inventory.quantity < quantity:
-                    raise ValidationError(f"Inventario insuficiente para {product.name}.")
-                    
-                inventory.quantity -= quantity
-                inventory.save()
-                
-                # Registramos el movimiento
-                StockMovement.objects.create(
-                    inventory=inventory,
-                    movement_type='EXIT',
-                    quantity=quantity,
-                    company=branch.company,
-                    branch=branch,
-                    user=user,
-                    notes=f"Venta #{sale.id}"
-                )
-        
-        sale.total = total
-        sale.save()
+        from .services import InventoryService
+        InventoryService.process_sale(sale, items_data, user, branch)
 
     @action(detail=True, methods=['post'])
     def send_email(self, request, pk=None):
@@ -547,22 +451,6 @@ class InventoryEntryViewSet(BaseInventoryViewSet):
 
         entry = serializer.save(user=user, company_id=effective_company_id, branch=branch)
         
-        # update inventory
-        try:
-            inventory = Inventory.objects.get(product=entry.product, branch=branch)
-            inventory.quantity += entry.quantity
-            inventory.save()
-            
-            # create movement
-            StockMovement.objects.create(
-                inventory=inventory,
-                company=inventory.product.company,
-                branch=branch,
-                user=user,
-                movement_type='ENTRY',
-                quantity=entry.quantity,
-                notes=entry.notes or f"Entrada vinculada al proveedor {entry.provider.name if entry.provider else 'N/A'}"
-            )
-        except Inventory.DoesNotExist:
-            pass
+        from .services import InventoryService
+        InventoryService.process_entry(entry, user, branch, entry.company)
 

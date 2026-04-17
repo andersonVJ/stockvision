@@ -36,7 +36,17 @@ class ProphetDemandPredictor:
         train_df = self.prepare_data(df)
         
         model_logger.info(f"Training Prophet on {len(train_df)} data points...")
-        self.model = Prophet(yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=False)
+        self.model = Prophet(
+            yearly_seasonality=True, 
+            weekly_seasonality=True, 
+            daily_seasonality=False,
+            changepoint_prior_scale=0.05,
+            seasonality_prior_scale=10.0
+        )
+        # Adding Colombia holidays as a commonly robust baseline for Latin American patterns
+        # Consider making the country code configurable via an environment variable or setting
+        self.model.add_country_holidays(country_name='CO')
+        
         self.model.fit(train_df)
         model_logger.info("Prophet model training completed successfully.")
         return self

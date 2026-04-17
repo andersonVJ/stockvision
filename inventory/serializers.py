@@ -29,9 +29,12 @@ class InventorySerializer(serializers.ModelSerializer):
     product_sku = serializers.ReadOnlyField(source='product.sku')
     product_image = serializers.ImageField(source='product.image', read_only=True)
     product_description = serializers.ReadOnlyField(source='product.description')
-    branch_name = serializers.ReadOnlyField(source='branch.name')
+    product_price = serializers.ReadOnlyField(source='product.price')
+    branch_name = serializers.ReadOnlyField(source='warehouse.branch.name')
+    branch_id = serializers.ReadOnlyField(source='warehouse.branch.id')
+    warehouse_name = serializers.ReadOnlyField(source='warehouse.name')
     providers_details = ProviderSerializer(source='product.providers', many=True, read_only=True)
-    
+
     class Meta:
         model = Inventory
         fields = '__all__'

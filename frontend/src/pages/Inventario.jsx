@@ -7,6 +7,7 @@ import {
 } from "../services/inventoryService";
 import { showErrorAlert, showSuccessAlert, showConfirmAlert } from "../utils/alerts";
 import { ShoppingCart, AlertTriangle, Clock, List, LayoutGrid, PackageX, Edit2, Building, Search, Trash2 } from "lucide-react";
+import { formatCurrency } from "../utils/currency";
 
 export default function Inventario() {
   const navigate = useNavigate();
@@ -338,7 +339,7 @@ export default function Inventario() {
                         const prodInvs = inventories.filter(inv => inv.product_sku === product.sku);
                         const displayInvs = (branchFilter && user.role === 'ADMIN') ? prodInvs.filter(i => String(i.branch) === String(branchFilter)) : prodInvs;
                         const totalQuantity = displayInvs.reduce((sum, i) => sum + i.quantity, 0);
-                        const isLowStock = displayInvs.length > 0 && displayInvs.some(i => i.quantity <= i.min_stock);
+                        const isLowStock = totalQuantity > 0 && totalQuantity < 10;
                         
                         return (
                           <div key={product.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow flex flex-col group relative">
@@ -365,7 +366,7 @@ export default function Inventario() {
                               <div className="mt-4 flex items-end justify-between mt-auto">
                                 <div>
                                   <p className="text-xs text-slate-500 font-medium pb-0.5">Precio Base</p>
-                                  <p className="text-lg font-black text-blue-600">${product.price}</p>
+                                  <p className="text-lg font-black text-blue-600">{formatCurrency(product.price)}</p>
                                 </div>
                                 <div className="text-right">
                                   <p className="text-xs font-bold text-slate-400 uppercase">En Sede(s)</p>
@@ -417,7 +418,7 @@ export default function Inventario() {
                                 <td className="px-6 py-4 text-xs">
                                   {product.fecha_estimada_fin_vida ? new Date(product.fecha_estimada_fin_vida).toLocaleDateString() : 'N/A'}
                                 </td>
-                                <td className="px-6 py-4 font-bold">${product.price}</td>
+                                <td className="px-6 py-4 font-bold">{formatCurrency(product.price)}</td>
                                 <td className="px-6 py-4 font-bold text-blue-600">{totalQuantity} uds</td>
                                 <td className="px-6 py-4">
                                   {user.role === 'ADMIN' && (

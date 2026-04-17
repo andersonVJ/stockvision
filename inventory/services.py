@@ -1,20 +1,27 @@
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
-from .models import Inventory, StockMovement, InternalTransfer, Warehouse
+from .models import Inventory, StockMovement, InternalTransfer, Warehouse, Order
 
 class InventoryService:
     @staticmethod
     def process_sale(sale, items_data, user, branch):
         """Procesa una venta con transacciones atómicas y control de concurrencia."""
         with transaction.atomic():
-            total = 0
             # Intentar usar el almacén de ventas, o el primero disponible
             warehouse = Warehouse.objects.filter(branch=branch, type='SALES').first()
             if not warehouse:
                 warehouse = Warehouse.objects.filter(branch=branch).first()
             
+            # Si aún no existe ningún almacén, crear uno por defecto automáticamente
             if not warehouse:
-                raise ValidationError("No existe almacén configurado en esta sede para descontar stock.")
+                warehouse = Warehouse.objects.create(
+                    branch=branch,
+                    name=f"Almacén Principal - {branch.name}",
+                    type='STORAGE',
+                    is_active=True
+                )
+            
+            total = 0
 
             from .models import Product, SaleItem
             
@@ -27,11 +34,23 @@ class InventoryService:
                     SaleItem.objects.create(sale=sale, product=product, quantity=quantity, price_at_sale=price)
                     total += float(price) * quantity
                     
-                    # Bloqueo concurrente de la fila de inventario
-                    try:
-                        inventory = Inventory.objects.select_for_update().get(product=product, warehouse=warehouse)
-                    except Inventory.DoesNotExist:
-                        raise ValidationError(f"Inventario para {product.name} no encontrado en el almacén de la sede.")
+                    # Buscar inventario: primero en el warehouse principal de la sede,
+                    # luego en cualquier otro warehouse de la misma sede con stock disponible
+                    inventory = Inventory.objects.select_for_update().filter(
+                        product=product, warehouse=warehouse
+                    ).first()
+                    
+                    if not inventory:
+                        # Buscar en cualquier almacén de la sede con stock
+                        branch_warehouses = Warehouse.objects.filter(branch=branch)
+                        inventory = Inventory.objects.select_for_update().filter(
+                            product=product,
+                            warehouse__in=branch_warehouses,
+                            quantity__gte=quantity
+                        ).first()
+                    
+                    if not inventory:
+                        raise ValidationError(f"Inventario para {product.name} no encontrado en ningún almacén de la sede.")
                     
                     if inventory.quantity < quantity:
                         raise ValidationError(f"Inventario insuficiente para {product.name}. Disponibles: {inventory.quantity}")
@@ -39,13 +58,13 @@ class InventoryService:
                     inventory.quantity -= quantity
                     inventory.save()
                     
-                    # Centralizar la auditoría de movimiento
+                    # Auditoría de movimiento
                     StockMovement.objects.create(
                         inventory=inventory,
                         movement_type='EXIT',
                         quantity=quantity,
                         company=branch.company,
-                        warehouse=warehouse,
+                        warehouse=inventory.warehouse,
                         user=user,
                         notes=f"Salida por Venta #{sale.id}"
                     )

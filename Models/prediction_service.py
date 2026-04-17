@@ -28,13 +28,14 @@ class PredictionService:
             prophet = ProphetDemandPredictor()
             xgboost = XGBInventoryClassifier()
             
-            # Mocking Training on the fly since we don't have persistence set up with real data yet.
-            # In production:
-            #   if not prophet.load_model(): prophet.train(...)
-            #   if not xgboost.load_model(): xgboost.train(...)
-            model_logger.info("Training models dynamically on mock data...")
-            prophet.train(sales_df)
-            xgboost.train(sales_df, inv_df)
+            # Load pre-trained models if they exist. 
+            # If not, fallback to training dynamically on the fly with mock data
+            model_logger.info("Loading pre-trained ML models...")
+            xgboost_loaded = xgboost.load_model()
+            
+            if not xgboost_loaded:
+                model_logger.warning("No pre-trained XGBoost model found. Falling back to dynamic mock training.")
+                xgboost.train(sales_df, inv_df)
             
             # Predict XGBoost states for all items in the inventory snapshot
             xgb_features = xgboost.extract_features(sales_df, inv_df)

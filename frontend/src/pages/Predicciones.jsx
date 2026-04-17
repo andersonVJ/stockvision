@@ -1,60 +1,127 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Sidebar from "../components/Sidebar";
 import api from "../api/api";
-import { TrendingUp, AlertTriangle, CheckCircle, PackageSearch, Loader2, ArrowRight } from "lucide-react";
+import {
+    TrendingUp, AlertTriangle, CheckCircle, PackageSearch,
+    Loader2, ArrowRight, ShoppingCart, Sparkles
+} from "lucide-react";
+import Swal from "sweetalert2";
 
 export default function Predicciones() {
     const [predictions, setPredictions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [orderingId, setOrderingId] = useState(null); // ID del producto que está procesando pedido
 
-    useEffect(() => {
-        const fetchPredictions = async () => {
-            try {
-                const tokens = JSON.parse(localStorage.getItem("tokens") || "{}");
-                const response = await api.get("/predictions/", {
-                    headers: {
-                        "Authorization": `Bearer ${tokens.access}`
-                    }
-                });
-                if (response.data.status === "success") {
-                    setPredictions(response.data.data);
-                } else {
-                    setError("Failed to parse prediction data.");
-                }
-            } catch (err) {
-                setError("Ocurrió un error al cargar los modelos predictivos.");
-            } finally {
-                setLoading(false);
+    const getTokens = () => JSON.parse(localStorage.getItem("tokens") || "{}");
+
+    const fetchPredictions = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await api.get("/predictions/", {
+                headers: { Authorization: `Bearer ${getTokens().access}` }
+            });
+            if (response.data.status === "success") {
+                setPredictions(response.data.data);
+            } else {
+                setError("Error al procesar los datos de predicción.");
             }
-        };
-
-        fetchPredictions();
+        } catch {
+            setError("Ocurrió un error al cargar los modelos predictivos.");
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
-    const getStateStyle = (stateCode) => {
-        switch (stateCode) {
-            case "CRITICAL":
-                return "from-red-50 to-red-100 border-red-200 text-red-800 shadow-red-100/50";
-            case "STABLE":
-                return "from-emerald-50 to-emerald-100 border-emerald-200 text-emerald-800 shadow-emerald-100/50";
-            case "LOW_ROTATION":
-                return "from-amber-50 to-amber-100 border-amber-200 text-amber-800 shadow-amber-100/50";
-            default:
-                return "from-slate-50 to-slate-100 border-slate-200 text-slate-800";
+    useEffect(() => { fetchPredictions(); }, [fetchPredictions]);
+
+    // ── Auto-Order Handler ──────────────────────────────────────────────────
+    const handleAutoOrder = async (pred) => {
+        const forecast = pred.prophet_forecast;
+        const demand = forecast?.next_30_days_demand ?? 0;
+        const qty = Math.max(1, demand);
+
+        const confirm = await Swal.fire({
+            title: "¿Generar Pedido Automático?",
+            html: `
+                <div style="text-align:left; font-size:14px; line-height:1.8">
+                    <p><b>Producto:</b> ${pred.product_name}</p>
+                    <p><b>Stock actual:</b> ${Math.round(pred.current_stock)} uds.</p>
+                    <p><b>Demanda proyectada (30 días):</b> <span style="color:#4f46e5;font-weight:700">${qty} uds.</span></p>
+                    <hr style="margin:12px 0; border-color:#e2e8f0" />
+                    <p style="color:#64748b">Se generará una <b>Orden de Compra</b> a tu proveedor y una <b>Ruta de Entrega</b> automáticamente.</p>
+                </div>
+            `,
+            icon: "question",
+            iconColor: "#4f46e5",
+            showCancelButton: true,
+            confirmButtonText: "✓ Sí, generar pedido",
+            cancelButtonText: "Cancelar",
+            confirmButtonColor: "#4f46e5",
+            cancelButtonColor: "#94a3b8",
+            background: "#f8fafc",
+            borderRadius: "16px",
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        setOrderingId(pred.product_id);
+        try {
+            const response = await api.post(
+                "/predictions/auto_order/",
+                { product_id: pred.product_id, quantity: qty },
+                { headers: { Authorization: `Bearer ${getTokens().access}` } }
+            );
+
+            await Swal.fire({
+                title: "¡Pedido Generado! 🚀",
+                html: `
+                    <div style="text-align:left; font-size:14px; line-height:1.9">
+                        <p>✅ <b>Orden de Compra #${response.data.order_id}</b> creada</p>
+                        <p>🚚 <b>Ruta de Entrega #${response.data.route_id}</b> creada y en tránsito</p>
+                        <hr style="margin:10px 0; border-color:#e2e8f0" />
+                        <p style="color:#64748b; font-size:13px">Puedes ver el pedido en el módulo de <b>Logística → Órdenes de Compra</b>.</p>
+                    </div>
+                `,
+                icon: "success",
+                iconColor: "#10b981",
+                confirmButtonText: "Entendido",
+                confirmButtonColor: "#4f46e5",
+                background: "#f0fdf4",
+            });
+        } catch (err) {
+            const msg = err.response?.data?.detail || "Error desconocido al generar el pedido.";
+            await Swal.fire({
+                title: "Error al Generar Pedido",
+                text: msg,
+                icon: "error",
+                iconColor: "#ef4444",
+                confirmButtonText: "Cerrar",
+                confirmButtonColor: "#ef4444",
+                background: "#fef2f2",
+            });
+        } finally {
+            setOrderingId(null);
         }
     };
 
-    const getStateIcon = (stateCode) => {
+    // ── Style Helpers ───────────────────────────────────────────────────────
+    const getStateStyle = (stateCode) => {
         switch (stateCode) {
-            case "CRITICAL":
-                return <AlertTriangle className="w-8 h-8 text-red-600 mb-2" />;
-            case "STABLE":
-                return <CheckCircle className="w-8 h-8 text-emerald-600 mb-2" />;
-            case "LOW_ROTATION":
-                return <PackageSearch className="w-8 h-8 text-amber-600 mb-2" />;
-            default:
-                return <TrendingUp className="w-8 h-8 text-slate-600 mb-2" />;
+            case "CRITICAL":    return "from-red-50 to-red-100 border-red-200 text-red-800 shadow-red-100/50";
+            case "STABLE":      return "from-emerald-50 to-emerald-100 border-emerald-200 text-emerald-800 shadow-emerald-100/50";
+            case "LOW_ROTATION":return "from-amber-50 to-amber-100 border-amber-200 text-amber-800 shadow-amber-100/50";
+            default:            return "from-slate-50 to-slate-100 border-slate-200 text-slate-800";
+        }
+    };
+
+    const getButtonStyle = (stateCode) => {
+        switch (stateCode) {
+            case "CRITICAL":    return "bg-red-600 hover:bg-red-700 text-white shadow-red-200";
+            case "STABLE":      return "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200";
+            case "LOW_ROTATION":return "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200";
+            default:            return "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200";
         }
     };
 
@@ -66,8 +133,16 @@ export default function Predicciones() {
                 return <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full border border-emerald-200 shadow-sm">ESTABLE</span>;
             case "LOW_ROTATION":
                 return <span className="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full border border-amber-200 shadow-sm">BAJA ROTACIÓN</span>;
-            default:
-                return null;
+            default: return null;
+        }
+    };
+
+    const getStateIcon = (stateCode) => {
+        switch (stateCode) {
+            case "CRITICAL":    return <AlertTriangle className="w-8 h-8 text-red-600 mb-2" />;
+            case "STABLE":      return <CheckCircle className="w-8 h-8 text-emerald-600 mb-2" />;
+            case "LOW_ROTATION":return <PackageSearch className="w-8 h-8 text-amber-600 mb-2" />;
+            default:            return <TrendingUp className="w-8 h-8 text-slate-600 mb-2" />;
         }
     };
 
@@ -76,14 +151,17 @@ export default function Predicciones() {
             <Sidebar />
 
             <div className="flex-1 p-10 overflow-y-auto">
-                <header className="mb-12">
+                {/* Header */}
+                <header className="mb-10">
                     <div className="flex items-center gap-3">
                         <div className="p-3 bg-indigo-100 rounded-2xl text-indigo-600 shadow-inner">
-                            <TrendingUp className="w-8 h-8" />
+                            <Sparkles className="w-8 h-8" />
                         </div>
                         <div>
                             <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">StockVision AI</h2>
-                            <p className="text-slate-500 mt-1 font-medium text-sm">Pronóstico de demanda y clasificación inteligente</p>
+                            <p className="text-slate-500 mt-1 font-medium text-sm">
+                                Pronóstico de demanda · Clasificación inteligente · Pedidos automáticos
+                            </p>
                         </div>
                     </div>
                 </header>
@@ -106,19 +184,28 @@ export default function Predicciones() {
                         {predictions.map((pred) => {
                             const stateCode = pred.xgboost_classification.state_code;
                             const forecast = pred.prophet_forecast;
+                            const isOrdering = orderingId === pred.product_id;
+                            const demand = Math.max(1, forecast?.next_30_days_demand ?? 0);
 
                             return (
-                                <div key={pred.product_id} className={`relative overflow-hidden bg-gradient-to-br border rounded-3xl p-6 shadow-lg transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl ${getStateStyle(stateCode)}`}>
-                                    
-                                    {/* Glassmorphism highlight overlay */}
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/40 blur-3xl rounded-full -mr-10 -mt-10"></div>
+                                <div
+                                    key={pred.product_id}
+                                    className={`relative overflow-hidden bg-gradient-to-br border rounded-3xl p-6 shadow-lg transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl ${getStateStyle(stateCode)}`}
+                                >
+                                    {/* Glassmorphism overlay */}
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/40 blur-3xl rounded-full -mr-10 -mt-10 pointer-events-none" />
 
-                                    <div className="relative z-10">
+                                    <div className="relative z-10 flex flex-col h-full">
+                                        {/* Producto Header */}
                                         <div className="flex items-center gap-4 mb-4">
                                             {pred.image ? (
-                                                <img src={`http://127.0.0.1:8000${pred.image}`} alt={pred.product_name} className="w-16 h-16 object-cover rounded-xl shadow-md border border-white/50 bg-white" />
+                                                <img
+                                                    src={`http://127.0.0.1:8000${pred.image}`}
+                                                    alt={pred.product_name}
+                                                    className="w-16 h-16 object-cover rounded-xl shadow-md border border-white/50 bg-white"
+                                                />
                                             ) : (
-                                                <div className="w-16 h-16 rounded-xl shadow-md border border-white/50 bg-slate-100 flex items-center justify-center">
+                                                <div className="w-16 h-16 rounded-xl shadow-md border border-white/50 bg-slate-100 flex items-center justify-center shrink-0">
                                                     <PackageSearch className="w-8 h-8 text-slate-300" />
                                                 </div>
                                             )}
@@ -128,18 +215,18 @@ export default function Predicciones() {
                                             </div>
                                         </div>
 
-                                        <div className="flex justify-between items-start mb-6">
+                                        {/* Stock + Badge */}
+                                        <div className="flex justify-between items-center mb-5">
                                             <div className="flex flex-col text-sm font-semibold opacity-80">
-                                                <span>ID Corto: #{pred.product_id}</span>
-                                                <span className="mt-0.5">Stock Físico: {Math.round(pred.current_stock)} uds.</span>
+                                                <span>ID: #{pred.product_id}</span>
+                                                <span className="mt-0.5">Stock: {Math.round(pred.current_stock)} uds.</span>
                                             </div>
-                                            <div className="flex flex-col items-end">
-                                               {getStateBadge(stateCode)}
-                                            </div>
+                                            {getStateBadge(stateCode)}
                                         </div>
-                                        
-                                        <div className="bg-white/60 backdrop-blur-md rounded-2xl p-5 mb-6 border border-white/50 shadow-sm">
-                                            <h4 className="text-xs font-bold uppercase tracking-wider opacity-70 mb-3 flex items-center">
+
+                                        {/* Pronóstico Prophet */}
+                                        <div className="bg-white/60 backdrop-blur-md rounded-2xl p-4 mb-4 border border-white/50 shadow-sm">
+                                            <h4 className="text-xs font-bold uppercase tracking-wider opacity-70 mb-2 flex items-center">
                                                 <TrendingUp className="w-3 h-3 mr-1" /> Pronóstico Prophet (30 Días)
                                             </h4>
                                             <div className="flex items-baseline gap-2 mb-1">
@@ -147,23 +234,44 @@ export default function Predicciones() {
                                                 <span className="text-sm font-bold opacity-70">uds.</span>
                                             </div>
                                             <p className="text-xs font-medium opacity-80">
-                                                Intervalo de confianza: {forecast.confidence_interval[0]} - {forecast.confidence_interval[1]}
+                                                Intervalo: {forecast.confidence_interval[0]} – {forecast.confidence_interval[1]}
                                             </p>
                                         </div>
 
-                                        <div>
-                                            <h4 className="text-xs font-bold uppercase tracking-wider opacity-70 mb-3 flex items-center gap-1">
+                                        {/* Recomendaciones IA */}
+                                        <div className="mb-5">
+                                            <h4 className="text-xs font-bold uppercase tracking-wider opacity-70 mb-2 flex items-center gap-1">
                                                 <ArrowRight className="w-3 h-3" /> Recomendación IA
                                             </h4>
-                                            <ul className="space-y-2">
+                                            <ul className="space-y-1.5">
                                                 {pred.xgboost_classification.recommendations.map((rec, i) => (
                                                     <li key={i} className="text-sm font-medium leading-tight flex items-start gap-2">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-current opacity-60 mt-1.5 shrink-0"></div>
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-current opacity-60 mt-1.5 shrink-0" />
                                                         {rec}
                                                     </li>
                                                 ))}
                                             </ul>
                                         </div>
+
+                                        {/* ── BOTÓN SOLICITAR ── */}
+                                        <button
+                                            id={`btn-auto-order-${pred.product_id}`}
+                                            onClick={() => handleAutoOrder(pred)}
+                                            disabled={isOrdering}
+                                            className={`mt-auto w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm transition-all duration-200 shadow-md active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed ${getButtonStyle(stateCode)}`}
+                                        >
+                                            {isOrdering ? (
+                                                <>
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    Generando pedido...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <ShoppingCart className="w-4 h-4" />
+                                                    Solicitar {demand} uds. al proveedor
+                                                </>
+                                            )}
+                                        </button>
                                     </div>
                                 </div>
                             );

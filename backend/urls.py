@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView
 from users.views import CustomTokenObtainPairView
-from inventory.views_predictions import InventoryPredictionsView
+from inventory.views_predictions import InventoryPredictionsView, AutoOrderAPIView
 
 urlpatterns = [
 
@@ -20,6 +20,7 @@ urlpatterns = [
     path('api/inventory/', include('inventory.urls')),
     path('api/logistics/', include('logistics.urls')),
     path('api/predictions/', InventoryPredictionsView.as_view(), name='inventory_predictions'),
+    path('api/predictions/auto_order/', AutoOrderAPIView.as_view(), name='auto_order_prediction'),
 
 ]
 

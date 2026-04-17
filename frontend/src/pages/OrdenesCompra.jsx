@@ -4,6 +4,7 @@ import {
     Package, XCircle, Lightbulb, ArrowRight, Layers,
     ChevronDown, ChevronUp, ClipboardCheck, History
 } from "lucide-react";
+import { formatCurrency } from "../utils/currency";
 import Sidebar from "../components/Sidebar";
 import Swal from "sweetalert2";
 import axios from "axios";
@@ -576,7 +577,7 @@ export default function OrdenesCompra() {
                                                 </div>
                                                 <div className="flex items-center gap-3">
                                                     <div className="text-right">
-                                                        <p className="text-sm font-bold text-slate-700">${Number(oc.total_orden).toFixed(2)}</p>
+                                                        <p className="text-sm font-bold text-slate-700">{formatCurrency(oc.total_orden)}</p>
                                                         <p className="text-xs text-slate-400">{oc.items?.length} producto(s)</p>
                                                     </div>
                                                     {expanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
@@ -602,7 +603,7 @@ export default function OrdenesCompra() {
                                                                 <div className="flex gap-6 text-xs text-slate-500">
                                                                     <span>Solicitado: <strong className="text-slate-700">{it.cantidad_solicitada}</strong></span>
                                                                     <span>Recibido: <strong className={it.cantidad_recibida != null ? "text-green-600" : "text-slate-300"}>{it.cantidad_recibida ?? "—"}</strong></span>
-                                                                    <span>Precio: <strong>${Number(it.precio_unitario).toFixed(2)}</strong></span>
+                                                                    <span>Precio: <strong>{formatCurrency(it.precio_unitario)}</strong></span>
                                                                 </div>
                                                             </div>
                                                         ))}

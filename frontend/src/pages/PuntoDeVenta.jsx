@@ -3,6 +3,7 @@ import Sidebar from "../components/Sidebar";
 import { getInventories, getProducts, createSale, getClientByDocument, getSalesByClient } from "../services/inventoryService";
 import FacturaImprimible from "../components/FacturaImprimible";
 import { showErrorAlert, showWarningAlert, showSuccessAlert } from "../utils/alerts";
+import { formatCurrency } from "../utils/currency";
 
 export default function PuntoDeVenta() {
   const [user, setUser] = useState({});
@@ -225,7 +226,7 @@ export default function PuntoDeVenta() {
                     <div key={inv.id} onClick={() => addToCart(inv)} className="p-4 border border-slate-200 rounded-xl hover:border-blue-500 hover:shadow-md cursor-pointer transition-all flex flex-col justify-between h-40 bg-white group relative">
                       {/* Price Tag */}
                       <span className="absolute top-2 right-2 bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded text-[10px] shadow-sm z-10 w-fit">
-                        {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits:0 }).format(productDetail.price)}
+                        {formatCurrency(productDetail.price)}
                       </span>
                       
                       <div>
@@ -279,7 +280,7 @@ export default function PuntoDeVenta() {
                     <div className="flex-1 pr-2">
                       <p className="font-bold text-slate-800 text-xs leading-tight line-clamp-2 mb-1">{item.name}</p>
                       <div className="flex items-center gap-2">
-                        <p className="text-[10px] text-blue-600 font-black">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits:0 }).format(item.price)}</p>
+                        <p className="text-[10px] text-blue-600 font-black">{formatCurrency(item.price)}</p>
                         {user.role === 'ADMIN' && <p className="text-[9px] uppercase text-indigo-500 font-bold">{item.branch_name}</p>}
                       </div>
                     </div>
@@ -289,7 +290,7 @@ export default function PuntoDeVenta() {
                         <input type="number" value={item.quantity} readOnly className="w-8 text-center text-xs font-bold outline-none border-x border-slate-200" />
                         <button onClick={() => updateQuantity(item.product, item.quantity + 1, item.available)} className="px-2.5 py-1 text-slate-600 hover:bg-slate-100 font-bold text-xs">+</button>
                       </div>
-                      <p className="text-[10px] font-bold text-slate-700">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits:0 }).format(item.price * item.quantity)}</p>
+                      <p className="text-[10px] font-bold text-slate-700">{formatCurrency(item.price * item.quantity)}</p>
                     </div>
                   </div>
                 ))
@@ -300,7 +301,7 @@ export default function PuntoDeVenta() {
               <div className="flex justify-between items-end mb-4 bg-slate-50 p-3 rounded-xl border border-blue-100">
                 <span className="text-sm font-bold text-slate-500 uppercase">Total a Pagar</span>
                 <span className="text-2xl font-black text-blue-700 tracking-tight">
-                  {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits:0 }).format(cartTotal)}
+                  {formatCurrency(cartTotal)}
                 </span>
               </div>
               <button 
@@ -408,7 +409,7 @@ export default function PuntoDeVenta() {
                         {clientHistory.map(sale => (
                           <tr key={sale.id} className="hover:bg-blue-50/50">
                             <td className="p-2">{new Date(sale.date).toLocaleDateString()}</td>
-                            <td className="p-2 font-bold">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits:0 }).format(sale.total)}</td>
+                            <td className="p-2 font-bold">{formatCurrency(sale.total)}</td>
                             <td className="p-2 text-right">
                               <span className={`px-1.5 py-0.5 rounded-full font-bold text-[9px] ${sale.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                 {sale.status}

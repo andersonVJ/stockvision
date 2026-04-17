@@ -87,12 +87,26 @@ class ProductViewSet(BaseInventoryViewSet):
             product = serializer.save(company_id=company_id)
         else:
             product = serializer.save(company=company)
-            
+
+        # Crear registros de Inventario correctamente a través de Warehouse
         from companies.models import Branch
-        from .models import Inventory
+        from .models import Inventory, Warehouse
         branches = Branch.objects.filter(company=product.company)
         for branch in branches:
-            Inventory.objects.create(product=product, branch=branch)
+            # Obtener o crear el warehouse principal de la sede
+            warehouse, _ = Warehouse.objects.get_or_create(
+                branch=branch,
+                type='STORAGE',
+                defaults={
+                    'name': f'Almacén Principal - {branch.name}',
+                    'is_active': True
+                }
+            )
+            Inventory.objects.get_or_create(
+                product=product,
+                warehouse=warehouse,
+                defaults={'quantity': 0, 'min_stock': 5, 'max_stock': 100}
+            )
 
     @action(detail=False, methods=['get'])
     def dashboard_alerts(self, request):
@@ -118,12 +132,13 @@ class ProductViewSet(BaseInventoryViewSet):
 
         # 2. Stock Muerto (sin salidas en los últimos 3 meses)
         # 3. Bajo Stock
-        inv_qs = Inventory.objects.all()
+        # Filtrar por warehouse__branch (Inventory no tiene campo branch directo)
+        inv_qs = Inventory.objects.select_related('product', 'warehouse', 'warehouse__branch').all()
         if company:
             if getattr(user, 'branch', None):
-                inv_qs = inv_qs.filter(branch=user.branch)
+                inv_qs = inv_qs.filter(warehouse__branch=user.branch)
             else:
-                inv_qs = inv_qs.filter(branch__company=company)
+                inv_qs = inv_qs.filter(warehouse__branch__company=company)
                 
         bajo_stock = []
         stock_muerto = []
@@ -132,7 +147,9 @@ class ProductViewSet(BaseInventoryViewSet):
         three_months_ago = datetime.now() - relativedelta(months=3)
         
         for inv in inv_qs:
-            if inv.quantity > 0 and inv.quantity <= inv.min_stock:
+            # Umbral mínimo absoluto de 10 uds. Evita falsos positivos
+            # en productos con miles de unidades cuyo min_stock está mal configurado.
+            if 0 < inv.quantity < 10:
                 bajo_stock.append(InventorySerializer(inv).data)
                 
             # Verifica salidas
@@ -155,8 +172,25 @@ class ProductViewSet(BaseInventoryViewSet):
         })
 
 class InventoryViewSet(BaseInventoryViewSet):
-    queryset = Inventory.objects.all()
+    queryset = Inventory.objects.select_related('product', 'warehouse', 'warehouse__branch').all()
     serializer_class = InventorySerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+
+        # Roles con visibilidad total (no se restringen por sede)
+        is_manager = user.is_superuser or user.is_staff or getattr(user, 'role', '') in ['ADMIN', 'JEFE_INVENTARIO']
+
+        # Filtro adicional por sede específica (query param branch_id)
+        branch_id = self.request.query_params.get('branch_id')
+        if branch_id:
+            qs = qs.filter(warehouse__branch_id=branch_id)
+        elif getattr(user, 'branch', None) and not is_manager:
+            # Solo empleados/vendedores con sede asignada ven únicamente su sede
+            qs = qs.filter(warehouse__branch=user.branch)
+
+        return qs
 
     @action(detail=False, methods=['get'])
     def low_stock_alerts(self, request):

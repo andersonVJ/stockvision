@@ -1,5 +1,6 @@
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import Logo from './Logo';
+import { formatCurrency } from '../utils/currency';
 
 const FacturaImprimible = forwardRef(({ saleData, user }, ref) => {
   if (!saleData) return null;
@@ -50,11 +51,11 @@ const FacturaImprimible = forwardRef(({ saleData, user }, ref) => {
                   <span className="text-[10px] text-slate-500">{item.sku}</span>
                   <br />
                   <span className="text-[10px] text-slate-500">
-                     {item.quantity} x {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(item.price)}
+                     {item.quantity} x {formatCurrency(item.price)}
                   </span>
                 </td>
                 <td className="py-2.5 align-top text-right font-bold">
-                  {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(item.price * item.quantity)}
+                  {formatCurrency(item.price * item.quantity)}
                 </td>
               </tr>
             ))}
@@ -66,7 +67,7 @@ const FacturaImprimible = forwardRef(({ saleData, user }, ref) => {
       <div className="border-t border-dashed border-slate-300 pt-4 mb-6">
          <div className="flex justify-between items-center text-lg font-black uppercase tracking-wider">
            <span>Total M.N</span>
-           <span>{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(saleData.total)}</span>
+           <span>{formatCurrency(saleData.total)}</span>
          </div>
          <p className="text-[10px] text-slate-400 text-right mt-1">IVA INCLUIDO EN PRODUCTOS APLICABLES</p>
       </div>

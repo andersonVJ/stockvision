@@ -19,6 +19,7 @@ urlpatterns = [
     path('api/users/', include('users.urls')),
     path('api/inventory/', include('inventory.urls')),
     path('api/logistics/', include('logistics.urls')),
+    path('api/analytics/', include('analytics.urls')),
     path('api/predictions/', InventoryPredictionsView.as_view(), name='inventory_predictions'),
     path('api/predictions/auto_order/', AutoOrderAPIView.as_view(), name='auto_order_prediction'),
 

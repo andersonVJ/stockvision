@@ -56,27 +56,20 @@ class ChartDataAPIView(APIView):
     """
     def get(self, request):
         company = request.user.company
-        # Logic to aggregate sales history vs predictions
-        # Mocking for demo purposes
-        data = {
-            "historical": [
-                {"name": "Sem 1", "ventas": 400, "prediccion": 410},
-                {"name": "Sem 2", "ventas": 300, "prediccion": 320},
-                {"name": "Sem 3", "ventas": 500, "prediccion": 480},
-                {"name": "Sem 4", "ventas": 280, "prediccion": 300},
-            ],
-            "top_products": [
-                {"name": "Producto A", "cantidad": 120},
-                {"name": "Producto B", "cantidad": 98},
-                {"name": "Producto C", "cantidad": 86},
-                {"name": "Producto D", "cantidad": 50},
-            ],
-            "inventory_health": [
-                {"name": "Estable", "value": 45},
-                {"name": "Critico", "value": 15},
-                {"name": "Sobre-stock", "value": 40},
-            ]
-        }
+        branch_id = request.query_params.get('branch')
+        category_id = request.query_params.get('category')
+        start_date = request.query_params.get('startDate')
+        end_date = request.query_params.get('endDate')
+        
+        branch = Branch.objects.filter(id=branch_id, company=company).first() if branch_id else None
+        
+        data = KPIAggregator.get_chart_data(
+            company, 
+            branch=branch, 
+            category_id=category_id,
+            start_date=start_date,
+            end_date=end_date
+        )
         return Response(data)
 
 class SimulationAPIView(APIView):
@@ -106,7 +99,7 @@ class ExportAPIView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        export_type = request.query_params.get('format', 'csv')
+        export_type = request.query_params.get('export_type', 'csv')
         token = request.query_params.get('token')
         start_date = request.query_params.get('startDate')
         end_date = request.query_params.get('endDate')
@@ -139,23 +132,59 @@ class ExportAPIView(APIView):
             start_date=start_date,
             end_date=end_date
         )
+
+        from django.db.models import Sum
+        from inventory.models import Sale, SaleItem
+        sales_query = Sale.objects.filter(branch__company=company, status='COMPLETED')
+        if branch_id: sales_query = sales_query.filter(branch_id=branch_id)
+        if category_id: sales_query = sales_query.filter(items__product__category_id=category_id).distinct()
+        if start_date: sales_query = sales_query.filter(date__gte=start_date)
+        if end_date: sales_query = sales_query.filter(date__lte=end_date)
         
+        sales_by_product = SaleItem.objects.filter(sale__in=sales_query).values('product_id', 'product__name').annotate(
+            total_qty=Sum('quantity')
+        ).order_by('-total_qty')
+        
+        ventas_dict = {item['product_id']: item['total_qty'] for item in sales_by_product}
+        
+        first_p = sales_by_product.first()
+        top_product = first_p['product__name'] if first_p else "N/A"
+        
+        last_p = sales_by_product.last()
+        worst_product = last_p['product__name'] if last_p else "N/A"
+        
+        def translate_recommendation(state_code):
+            if state_code == 'LOW_ROTATION':
+                return 'Rematar producto / Promoción urgente'
+            elif state_code == 'CRITICAL':
+                return 'Comprar stock inmediatamente'
+            elif state_code == 'OVERSTOCK':
+                return 'Detener compras, posible sobre-stock'
+            return 'Mantener ritmo de ventas'
+
         if export_type == 'excel':
             wb = Workbook()
             ws = wb.active
             ws.title = "Reporte AI StockVision"
             
-            headers = ['Producto', 'Categoría', 'Stock Actual', 'Demanda 30d (IA)', 'Estado', 'Recomendación']
+            # Resumen en la cabecera
+            ws.append(['Resumen del Periodo'])
+            ws.append(['Mejor Producto Vendido:', top_product])
+            ws.append(['Peor Producto Vendido:', worst_product])
+            ws.append([])
+            
+            headers = ['Producto', 'Categoría', 'Ventas (Filtro)', 'Stock Actual', 'Demanda 30d (IA)', 'Estado', 'Sugerencia de Mejora (IA)']
             ws.append(headers)
             
             for p in predictions:
                 ws.append([
                     p['product_name'],
                     p['category'],
+                    ventas_dict.get(p['product_id'], 0),
                     p['current_stock'],
                     p['prophet_forecast']['next_30_days_demand'],
                     p['xgboost_classification']['state_code'],
-                    ", ".join(p['xgboost_classification']['recommendations'])
+                    translate_recommendation(p['xgboost_classification']['state_code'])
                 ])
                 
             response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -168,14 +197,18 @@ class ExportAPIView(APIView):
             response['Content-Disposition'] = 'attachment; filename=reporte_stockvision.csv'
             
             writer = csv.writer(response)
-            writer.writerow(['Producto', 'Categoría', 'Stock Actual', 'Demanda 30d (IA)', 'Estado'])
+            writer.writerow(['Mejor Producto Vendido:', top_product, 'Peor Producto Vendido:', worst_product])
+            writer.writerow([])
+            writer.writerow(['Producto', 'Categoría', 'Ventas (Filtro)', 'Stock Actual', 'Demanda 30d (IA)', 'Estado', 'Sugerencia de Mejora (IA)'])
             
             for p in predictions:
                 writer.writerow([
                     p['product_name'],
                     p['category'],
+                    ventas_dict.get(p['product_id'], 0),
                     p['current_stock'],
                     p['prophet_forecast']['next_30_days_demand'],
-                    p['xgboost_classification']['state_code']
+                    p['xgboost_classification']['state_code'],
+                    translate_recommendation(p['xgboost_classification']['state_code'])
                 ])
             return response

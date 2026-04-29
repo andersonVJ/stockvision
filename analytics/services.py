@@ -45,6 +45,80 @@ class KPIAggregator:
             "days_coverage": round(total_stock_qty / (sales_qty/30), 1) if (sales_qty and sales_qty > 0) else 0
         }
 
+    @staticmethod
+    def get_chart_data(company, branch=None, category_id=None, start_date=None, end_date=None):
+        from django.db.models.functions import TruncMonth
+        from django.db.models import Sum, F
+        
+        sales_query = Sale.objects.filter(branch__company=company, status='COMPLETED')
+        if branch:
+            sales_query = sales_query.filter(branch=branch)
+        if category_id:
+            sales_query = sales_query.filter(items__product__category_id=category_id).distinct()
+        if start_date:
+            sales_query = sales_query.filter(date__gte=start_date)
+        if end_date:
+            sales_query = sales_query.filter(date__lte=end_date)
+            
+        historical_sales = sales_query.annotate(
+            month=TruncMonth('date')
+        ).values('month').annotate(
+            ventas=Sum('total')
+        ).order_by('month')
+        
+        sale_items_query = SaleItem.objects.filter(sale__in=sales_query)
+        cat_historical = sale_items_query.annotate(
+            month=TruncMonth('sale__date')
+        ).values('month').annotate(
+            ventas=Sum(F('quantity') * F('price_at_sale'))
+        ).order_by('month')
+
+        sales_by_branch = sales_query.values('branch__name').annotate(
+            ventas=Sum('total')
+        ).order_by('-ventas')
+        
+        products_sold = sale_items_query.values('product__name').annotate(
+            cantidad=Sum('quantity'),
+            total_ventas=Sum(F('quantity') * F('price_at_sale'))
+        ).order_by('-cantidad')
+        
+        top_products = list(products_sold[:5])
+        worst_products = list(products_sold.order_by('cantidad')[:5])
+        
+        historical = []
+        for h in historical_sales:
+            if not h['month']: continue
+            m_name = h['month'].strftime("%b %Y")
+            historical.append({
+                "name": m_name,
+                "ventas": float(h['ventas'] or 0),
+                "prediccion": round(float(h['ventas'] or 0) * 1.05, 2)
+            })
+            
+        ventas_categoria = []
+        for c in cat_historical:
+            if not c['month']: continue
+            m_name = c['month'].strftime("%b %Y")
+            ventas_categoria.append({
+                "name": m_name,
+                "ventas": float(c['ventas'] or 0)
+            })
+            
+        sedes_data = []
+        for s in sales_by_branch:
+            sedes_data.append({
+                "name": s['branch__name'] or "General",
+                "ventas": float(s['ventas'] or 0)
+            })
+            
+        return {
+            "historical": historical,
+            "ventas_por_sede": sedes_data,
+            "ventas_categoria": ventas_categoria,
+            "top_products": [{"name": p['product__name'], "cantidad": p['cantidad']} for p in top_products],
+            "worst_products": [{"name": p['product__name'], "cantidad": p['cantidad']} for p in worst_products]
+        }
+
 class AIOrchestrator:
     """
     Handles AI prediction lifecycle, caching, and background pre-computation.

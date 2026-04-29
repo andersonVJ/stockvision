@@ -37,7 +37,7 @@ export default function GestionEmpleados() {
     } catch (e) {
       console.error("Error parsing user from localStorage:", e);
     }
-    
+
     // Fetch branches for branch assignment
     getBranches().then(data => setBranches(data)).catch(console.error);
   }, []);
@@ -80,7 +80,7 @@ export default function GestionEmpleados() {
           headers: { Authorization: `Bearer ${tokens.access}` }
         }
       );
-      
+
       if (res.ok) {
         showSuccessAlert("Empleado eliminado");
         loadEmployees();
@@ -218,7 +218,6 @@ export default function GestionEmpleados() {
                       <th className="px-6 py-4">Empleado</th>
                       <th className="px-6 py-4">Cédula</th>
                       <th className="px-6 py-4">Rol</th>
-                      <th className="px-6 py-4">Cargo Operativo</th>
                       <th className="px-6 py-4 text-right">Acciones</th>
                     </tr>
                   </thead>
@@ -245,22 +244,6 @@ export default function GestionEmpleados() {
                             {emp.role}
                           </span>
                         </td>
-
-                        <td className="px-6 py-4">
-                          <select
-                            className="text-sm border border-slate-200 rounded px-2 py-1 outline-none focus:border-blue-500"
-                            value={emp.position || ""}
-                            onChange={(e) =>
-                              handleAssignPosition(emp.id, e.target.value)
-                            }
-                          >
-                            <option value="">Sin cargo</option>
-                            <option value="BODEGA">Bodega</option>
-                            <option value="ALMACEN">Almacén</option>
-                            <option value="RECOGIDA">Recogida</option>
-                          </select>
-                        </td>
-
                         <td className="px-6 py-4 text-right space-x-2">
                           {user.role === "ADMIN" && (
                             <>
@@ -416,10 +399,10 @@ export default function GestionEmpleados() {
                     <option value="EMPLEADO">Empleado</option>
                     <option value="VENDEDOR">Vendedor</option>
                     {user.role === "ADMIN" && (
-                        <option value="JEFE_INVENTARIO">Jefe de Inventario</option>
+                      <option value="JEFE_INVENTARIO">Jefe de Inventario</option>
                     )}
                     {user.role === "ADMIN" && (
-                        <option value="ADMIN">Administrador</option>
+                      <option value="ADMIN">Administrador</option>
                     )}
                   </select>
                 </div>
@@ -439,27 +422,6 @@ export default function GestionEmpleados() {
                   >
                     <option value="">Ninguna o Toda la Empresa...</option>
                     {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
-                </div>
-              )}
-
-              {/* Cargo Operativo */}
-              {(user.role === "ADMIN" || user.role === "JEFE_INVENTARIO") && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Cargo Operativo
-                  </label>
-                  <select
-                    value={formData.position}
-                    onChange={(e) =>
-                      setFormData({ ...formData, position: e.target.value })
-                    }
-                    className="w-full border border-slate-300 rounded-lg py-2 px-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                  >
-                    <option value="">Sin cargo</option>
-                    <option value="BODEGA">Bodega</option>
-                    <option value="ALMACEN">Almacén</option>
-                    <option value="RECOGIDA">Recogida</option>
                   </select>
                 </div>
               )}

@@ -6,6 +6,8 @@ import KPICard from "../components/analytics/KPICard";
 import MainChart from "../components/analytics/MainChart";
 import AlertsPanel from "../components/analytics/AlertsPanel";
 import FiltersBar from "../components/analytics/FiltersBar";
+import BarChartSedes from "../components/analytics/BarChartSedes";
+import CategoryBarChart from "../components/analytics/CategoryBarChart";
 import { 
   DollarSign, 
   Package, 
@@ -40,8 +42,8 @@ const Dashboard = () => {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       
       const [statsRes, chartRes, alertsRes] = await Promise.all([
-        axios.get(`/api/analytics/summary/?branch=${filters.branch}&category=${filters.category}`, config),
-        axios.get(`/api/analytics/charts/?branch=${filters.branch}&category=${filters.category}`, config),
+        axios.get(`/api/analytics/summary/?branch=${filters.branch}&category=${filters.category}&startDate=${filters.startDate || ''}&endDate=${filters.endDate || ''}`, config),
+        axios.get(`/api/analytics/charts/?branch=${filters.branch}&category=${filters.category}&startDate=${filters.startDate || ''}&endDate=${filters.endDate || ''}`, config),
         axios.get(`/api/analytics/alerts/?branch=${filters.branch}&category=${filters.category}`, config)
       ]);
 
@@ -83,7 +85,7 @@ const Dashboard = () => {
   const handleExport = (format) => {
     const token = localStorage.getItem('token');
     const { startDate, endDate, branch, category } = filters;
-    let url = `/api/analytics/export-data/?format=${format}&token=${token}`;
+    let url = `/api/analytics/export-data/?export_type=${format}&token=${token}`;
     if (startDate) url += `&startDate=${startDate}`;
     if (endDate) url += `&endDate=${endDate}`;
     if (branch) url += `&branch=${branch}`;
@@ -166,7 +168,7 @@ const Dashboard = () => {
           {/* Main Chart - Hits 2/3 of width */}
           <div className="lg:col-span-2">
             <MainChart 
-              title="Ventas Reales vs Predicción IA (30 días)" 
+              title="Ventas Reales vs Predicción IA (Histórico)" 
               data={charts?.historical || []} 
             />
           </div>
@@ -175,6 +177,18 @@ const Dashboard = () => {
           <div className="lg:col-span-1">
             <AlertsPanel alerts={alerts} />
           </div>
+        </div>
+
+        {/* New Analytics Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <BarChartSedes 
+            title="Ventas Totales por Sede" 
+            data={charts?.ventas_por_sede || []} 
+          />
+          <CategoryBarChart 
+            title="Ventas por Mes (Categoría)" 
+            data={charts?.ventas_categoria || []} 
+          />
         </div>
 
         {/* Additional Stats */}
@@ -216,9 +230,38 @@ const Dashboard = () => {
                   <div className="bg-blue-500 h-full" style={{ width: '88.5%' }}></div>
                 </div>
               </div>
-              <p className="text-xs text-gray-400 mt-6 leading-relaxed">
+            <p className="text-xs text-gray-400 mt-6 leading-relaxed">
                 Metricas calculadas usando validación cruzada y MAPE (Mean Absolute Percentage Error) sobre los últimos 90 días de operación.
               </p>
+            </div>
+          </div>
+          
+          {/* Top & Worst Products */}
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm md:col-span-2">
+            <h3 className="text-xl font-bold text-gray-800 mb-6">Productos Destacados del Periodo</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-4 bg-green-50 border border-green-100 rounded-xl">
+                <p className="text-sm text-green-700 font-bold uppercase tracking-wider mb-2">Mejor Producto Vendido</p>
+                <div className="flex justify-between items-end">
+                  <span className="text-lg font-bold text-gray-900 truncate pr-2">
+                    {charts?.top_products?.[0]?.name || "N/A"}
+                  </span>
+                  <span className="text-2xl font-black text-green-600">
+                    {charts?.top_products?.[0]?.cantidad || 0} <span className="text-sm font-medium">uds</span>
+                  </span>
+                </div>
+              </div>
+              <div className="p-4 bg-red-50 border border-red-100 rounded-xl">
+                <p className="text-sm text-red-700 font-bold uppercase tracking-wider mb-2">Peor Producto Vendido</p>
+                <div className="flex justify-between items-end">
+                  <span className="text-lg font-bold text-gray-900 truncate pr-2">
+                    {charts?.worst_products?.[0]?.name || "N/A"}
+                  </span>
+                  <span className="text-2xl font-black text-red-600">
+                    {charts?.worst_products?.[0]?.cantidad || 0} <span className="text-sm font-medium">uds</span>
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

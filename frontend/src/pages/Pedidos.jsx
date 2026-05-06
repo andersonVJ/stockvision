@@ -321,7 +321,7 @@ export default function Pedidos() {
                   className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Ingreso manual (Sin proveedor)</option>
-                  {providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  {providers.filter(p => p.tipo !== 'TIENDA_MARCA').map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
 

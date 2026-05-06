@@ -170,11 +170,20 @@ class DeliveryRouteViewSet(BaseLogisticsViewSet):
                     item.received_quantity = rec_qty
                     item.save()
                     if rec_qty > 0:
+                        from django.utils import timezone
+                        item.product.fecha_ingreso = timezone.now()
+                        item.product.save(update_fields=['fecha_ingreso'])
+                        
                         target_branch = order.branch or user.branch
                         if target_branch:
+                            from inventory.models import Warehouse
+                            target_warehouse = Warehouse.objects.filter(branch=target_branch).first()
+                            if not target_warehouse:
+                                target_warehouse = Warehouse.objects.create(branch=target_branch, name=f"Bodega Principal {target_branch.name}", type='STORAGE')
+                                
                             inventory, _ = Inventory.objects.get_or_create(
                                 product=item.product,
-                                branch=target_branch,
+                                warehouse=target_warehouse,
                                 defaults={'quantity': 0, 'min_stock': 5, 'max_stock': 100}
                             )
                             StockMovement.objects.create(
@@ -197,6 +206,10 @@ class DeliveryRouteViewSet(BaseLogisticsViewSet):
 class PurchaseOrderViewSet(BaseLogisticsViewSet):
     queryset = PurchaseOrder.objects.all()
     serializer_class = PurchaseOrderSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return qs.filter(proveedor__tipo='TIENDA_MARCA')
 
     def perform_create(self, serializer):
         order = serializer.save(
@@ -319,9 +332,18 @@ class PurchaseOrderViewSet(BaseLogisticsViewSet):
 
             # Ahora procedemos con la actualización de inventario (ya sea producto original o auto-creado)
             if qty > 0 and item.producto:
+                from django.utils import timezone
+                item.producto.fecha_ingreso = timezone.now()
+                item.producto.save(update_fields=['fecha_ingreso'])
+                
+                from inventory.models import Warehouse
+                target_warehouse = Warehouse.objects.filter(branch=branch).first()
+                if not target_warehouse:
+                    target_warehouse = Warehouse.objects.create(branch=branch, name=f"Bodega Principal {branch.name}", type='STORAGE')
+
                 inventory, _ = Inventory.objects.get_or_create(
                     product=item.producto,
-                    branch=branch,
+                    warehouse=target_warehouse,
                     defaults={'quantity': 0, 'min_stock': 5, 'max_stock': 100}
                 )
 
@@ -442,13 +464,14 @@ class PurchaseOrderViewSet(BaseLogisticsViewSet):
                 sale__status='COMPLETED'
             ).aggregate(total=Sum('quantity'))['total'] or 0
 
-            # Encontrar el proveedor con mejor relación para este producto
+            # Encontrar el proveedor de TIENDA_MARCA con mejor relación para este producto
             proveedor_sugerido = None
-            if inv.product.providers.exists():
+            marca_provider = inv.product.providers.filter(tipo='TIENDA_MARCA').first()
+            if marca_provider:
                 proveedor_sugerido = {
-                    'id': inv.product.providers.first().id,
-                    'nombre': inv.product.providers.first().name,
-                    'contacto': inv.product.providers.first().contact,
+                    'id': marca_provider.id,
+                    'nombre': marca_provider.name,
+                    'contacto': marca_provider.contact,
                 }
 
             cantidad_sugerida = max(inv.max_stock - inv.quantity, inv.min_stock)

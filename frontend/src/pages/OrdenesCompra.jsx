@@ -103,6 +103,24 @@ export default function OrdenesCompra() {
     }, []);
     const role = user?.role || "EMPLEADO";
 
+    // ── Check for direct purchase requests via URL ────────────────────────────
+    useEffect(() => {
+        const searchParams = new URLSearchParams(window.location.search);
+        const pid = searchParams.get("producto_id");
+        const pname = searchParams.get("producto_nombre");
+        if (pid && pname) {
+            setActiveTab("compras");
+            setFormOC(p => ({
+                ...p,
+                items: [{ producto_id: pid, producto_nombre: pname, cantidad_solicitada: 1, precio_unitario: 0 }]
+            }));
+            setShowOCModal(true);
+            
+            // Limpiar la URL para evitar que se abra de nuevo si el usuario recarga la página
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }, []);
+
     // ── Pedidos internos (Pedidos.jsx merged) ─────────────────────────────────
     const [orders, setOrders] = useState([]);
     const [products, setProducts] = useState([]);
@@ -143,7 +161,7 @@ export default function OrdenesCompra() {
         const items = newOrderItems.filter(i => i.product && parseInt(i.requested_quantity) > 0);
         if (!items.length) { Swal.fire({ icon: "warning", title: "Agrega al menos un producto", confirmButtonColor: "#2563eb" }); return; }
         try {
-            await createOrder({ branch: selectedBranch, items });
+            await createOrder({ branch: selectedBranch, provider: selectedProvider || null, items });
             setShowCreateModal(false); setNewOrderItems([{ product: "", requested_quantity: 1 }]); setSelectedProvider(""); setSelectedBranch("");
             loadPedidos();
             Swal.fire({ icon: "success", title: "¡Pedido creado!", confirmButtonColor: "#2563eb" });
@@ -640,7 +658,7 @@ export default function OrdenesCompra() {
                                     setNewOrderItems(pid ? products.filter(p => p.providers?.includes(parseInt(pid))).map(p => ({ product: String(p.id), requested_quantity: 0 })) : [{ product: "", requested_quantity: 1 }]);
                                 }} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     <option value="">Sin proveedor (manual)</option>
-                                    {providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                    {providers.filter(p => p.tipo !== 'TIENDA_MARCA').map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
                             </div>
                             <div>

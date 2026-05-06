@@ -46,7 +46,13 @@ export default function Inicio() {
         }
       }
     };
-    fetchData();
+
+    fetchData(); // Fetch inmediatamente al cargar
+
+    // Polling cada 10 segundos para actualizar automáticamente
+    const intervalId = setInterval(fetchData, 10000);
+
+    return () => clearInterval(intervalId); // Limpiar al desmontar
   }, [role]);
 
   const getRoleDisplayName = (roleStr) => {
@@ -103,7 +109,7 @@ export default function Inicio() {
                           </li>
                         ))}
                         {alerts.map((a) => (
-                          <li key={'alr'+a.id} className="p-3 hover:bg-red-50/50 rounded-xl transition-colors border-b border-slate-50 last:border-0 cursor-pointer" onClick={() => window.location.href='/inventory'}>
+                          <li key={'alr'+a.id} className="p-3 hover:bg-red-50/50 rounded-xl transition-colors border-b border-slate-50 last:border-0 cursor-pointer" onClick={() => window.location.href=`/compras?producto_id=${a.product}&producto_nombre=${encodeURIComponent(a.product_name)}`}>
                             <p className="text-sm font-semibold text-slate-800">{a.product_name}</p>
                             <p className="text-xs text-red-600 font-medium">Stock Crítico: {a.quantity} <span className="text-slate-400 font-normal ml-1">(Mínimo: {a.min_stock})</span></p>
                           </li>

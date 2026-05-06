@@ -114,7 +114,7 @@ class ProductViewSet(BaseInventoryViewSet):
         company = user.company
         
         # Build base queryset for effective company/branch
-        qs = Product.objects.all()
+        qs = Product.objects.filter(is_active=True)
         if company:
             qs = qs.filter(company=company)
             
@@ -133,7 +133,7 @@ class ProductViewSet(BaseInventoryViewSet):
         # 2. Stock Muerto (sin salidas en los últimos 3 meses)
         # 3. Bajo Stock
         # Filtrar por warehouse__branch (Inventory no tiene campo branch directo)
-        inv_qs = Inventory.objects.select_related('product', 'warehouse', 'warehouse__branch').all()
+        inv_qs = Inventory.objects.select_related('product', 'warehouse', 'warehouse__branch').filter(product__is_active=True)
         if company:
             if getattr(user, 'branch', None):
                 inv_qs = inv_qs.filter(warehouse__branch=user.branch)
@@ -171,6 +171,23 @@ class ProductViewSet(BaseInventoryViewSet):
             "stock_muerto": stock_muerto
         })
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.query_params.get('include_inactive') == 'true':
+            return qs
+        return qs.filter(is_active=True)
+
+    def destroy(self, request, *args, **kwargs):
+        from django.db.models import ProtectedError
+        from rest_framework import status
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except ProtectedError:
+            instance = self.get_object()
+            instance.is_active = False
+            instance.save()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
 class InventoryViewSet(BaseInventoryViewSet):
     queryset = Inventory.objects.select_related('product', 'warehouse', 'warehouse__branch').all()
     serializer_class = InventorySerializer
@@ -189,6 +206,9 @@ class InventoryViewSet(BaseInventoryViewSet):
         elif getattr(user, 'branch', None) and not is_manager:
             # Solo empleados/vendedores con sede asignada ven únicamente su sede
             qs = qs.filter(warehouse__branch=user.branch)
+
+        # Siempre ocultar inventario de productos inactivos (eliminados lógicamente)
+        qs = qs.filter(product__is_active=True)
 
         return qs
 
@@ -241,6 +261,10 @@ class StockMovementViewSet(BaseInventoryViewSet):
 class OrderViewSet(BaseInventoryViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return qs.exclude(provider__tipo='TIENDA_MARCA')
 
     def perform_create(self, serializer):
         company = self.request.user.company

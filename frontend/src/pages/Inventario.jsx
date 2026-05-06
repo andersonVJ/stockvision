@@ -134,6 +134,7 @@ export default function Inventario() {
       formData.append("sku", prodData.sku);
       formData.append("price", prodData.price);
       formData.append("category", prodData.category);
+      formData.append("is_active", "true");
       if (prodData.fecha_ingreso) formData.append("fecha_ingreso", prodData.fecha_ingreso);
       if (prodData.image) formData.append("image", prodData.image);
       if (prodData.description) formData.append("description", prodData.description);

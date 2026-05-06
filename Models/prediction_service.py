@@ -51,7 +51,7 @@ class PredictionService:
                 
                 if p_sales.empty:
                     prophet_res = {
-                        "next_30_days_demand": 0,
+                        "next_days_demand": 0,
                         "confidence_interval": [0, 0]
                     }
                 else:

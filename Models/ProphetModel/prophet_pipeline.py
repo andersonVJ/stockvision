@@ -37,7 +37,7 @@ class ProphetDemandPredictor:
         
         model_logger.info(f"Training Prophet on {len(train_df)} data points...")
         self.model = Prophet(
-            yearly_seasonality=True, 
+            yearly_seasonality=False, 
             weekly_seasonality=True, 
             daily_seasonality=False,
             changepoint_prior_scale=0.05,

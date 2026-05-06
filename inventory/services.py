@@ -91,6 +91,10 @@ class InventoryService:
                 defaults={'quantity': 0, 'min_stock': 5, 'max_stock': 100}
             )
             
+            from django.utils import timezone
+            entry.product.fecha_ingreso = timezone.now()
+            entry.product.save(update_fields=['fecha_ingreso'])
+            
             inventory.quantity += entry.quantity
             inventory.save()
             
@@ -172,6 +176,10 @@ class InventoryService:
                 item.save()
                 
                 if rec_qty > 0:
+                    from django.utils import timezone
+                    item.product.fecha_ingreso = timezone.now()
+                    item.product.save(update_fields=['fecha_ingreso'])
+                    
                     inventory, created = Inventory.objects.select_for_update().get_or_create(
                         product=item.product,
                         warehouse=warehouse,

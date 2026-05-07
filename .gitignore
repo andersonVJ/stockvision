@@ -29,3 +29,16 @@ staticfiles/
 
 # Logs
 *.log
+
+# Modelos IA
+Models/saved_models/*.pkl
+
+# Datasets IA
+Models/data/*.csv
+
+# Logs
+Models/logs/*.log
+
+# Cache
+__pycache__/
+*.pyc

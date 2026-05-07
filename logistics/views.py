@@ -26,9 +26,13 @@ class BaseLogisticsViewSet(viewsets.ModelViewSet):
         if not company:
             return qs.none()
 
-        if user.is_superuser or user.is_staff:
+        # Los administradores y jefes de inventario ven todo lo de la empresa
+        is_manager = user.is_superuser or user.is_staff or user.role in ['ADMIN', 'JEFE_INVENTARIO']
+        
+        if is_manager:
             return qs.filter(company=company)
 
+        # Los empleados regulares solo ven lo de su sede asignada
         if user.branch:
             if hasattr(qs.model, 'branch'):
                 return qs.filter(company=company, branch=user.branch)
@@ -164,41 +168,23 @@ class DeliveryRouteViewSet(BaseLogisticsViewSet):
                 order.save()
             elif nuevo_estado == 'FINALIZADA' and old_estado != 'FINALIZADA' and order.status != 'DELIVERED':
                 user = request.user
-                from inventory.models import Inventory, StockMovement
-                for item in order.items.all():
-                    rec_qty = item.requested_quantity
-                    item.received_quantity = rec_qty
-                    item.save()
-                    if rec_qty > 0:
-                        from django.utils import timezone
-                        item.product.fecha_ingreso = timezone.now()
-                        item.product.save(update_fields=['fecha_ingreso'])
-                        
-                        target_branch = order.branch or user.branch
-                        if target_branch:
-                            from inventory.models import Warehouse
-                            target_warehouse = Warehouse.objects.filter(branch=target_branch).first()
-                            if not target_warehouse:
-                                target_warehouse = Warehouse.objects.create(branch=target_branch, name=f"Bodega Principal {target_branch.name}", type='STORAGE')
-                                
-                            inventory, _ = Inventory.objects.get_or_create(
-                                product=item.product,
-                                warehouse=target_warehouse,
-                                defaults={'quantity': 0, 'min_stock': 5, 'max_stock': 100}
-                            )
-                            StockMovement.objects.create(
-                                inventory=inventory,
-                                company=order.company,
-                                branch=target_branch,
-                                user=user,
-                                movement_type='ENTRY',
-                                quantity=rec_qty,
-                                notes=f"Recepción Automática via Ruta #{ruta.id} (Pedido #{order.id})"
-                            )
-                            inventory.quantity += rec_qty
-                            inventory.save()
-                order.status = 'DELIVERED'
-                order.save()
+                from inventory.services import InventoryService
+                target_branch = order.branch or user.branch
+                if target_branch:
+                    InventoryService.process_reception(order, {}, user, target_branch)
+        
+        # Sincronización automática de Órdenes de Compra (Marcas)
+        elif ruta.tipo == 'ENTRADA' and ruta.purchase_order:
+            oc = ruta.purchase_order
+            if nuevo_estado == 'EN_CURSO' and oc.estado != 'EN_TRANSITO':
+                oc.estado = 'EN_TRANSITO'
+                oc.save()
+            elif nuevo_estado == 'FINALIZADA' and old_estado != 'FINALIZADA' and oc.estado != 'RECIBIDA':
+                user = request.user
+                from inventory.services import InventoryService
+                target_branch = ruta.branch or oc.branch or user.branch
+                if target_branch:
+                    InventoryService.process_reception(oc, {}, user, target_branch)
                 
         return Response(self.get_serializer(ruta).data)
 
@@ -208,8 +194,7 @@ class PurchaseOrderViewSet(BaseLogisticsViewSet):
     serializer_class = PurchaseOrderSerializer
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        return qs.filter(proveedor__tipo='TIENDA_MARCA')
+        return super().get_queryset()
 
     def perform_create(self, serializer):
         order = serializer.save(
@@ -330,41 +315,10 @@ class PurchaseOrderViewSet(BaseLogisticsViewSet):
             
             item.save()
 
-            # Ahora procedemos con la actualización de inventario (ya sea producto original o auto-creado)
-            if qty > 0 and item.producto:
-                from django.utils import timezone
-                item.producto.fecha_ingreso = timezone.now()
-                item.producto.save(update_fields=['fecha_ingreso'])
-                
-                from inventory.models import Warehouse
-                target_warehouse = Warehouse.objects.filter(branch=branch).first()
-                if not target_warehouse:
-                    target_warehouse = Warehouse.objects.create(branch=branch, name=f"Bodega Principal {branch.name}", type='STORAGE')
+        from inventory.services import InventoryService
+        InventoryService.process_reception(orden, items_map, user, branch)
 
-                inventory, _ = Inventory.objects.get_or_create(
-                    product=item.producto,
-                    warehouse=target_warehouse,
-                    defaults={'quantity': 0, 'min_stock': 5, 'max_stock': 100}
-                )
-
-                StockMovement.objects.create(
-                    inventory=inventory,
-                    movement_type='ENTRY',
-                    quantity=qty,
-                    company=orden.company,
-                    branch=branch,
-                    user=user,
-                    notes=f'Recepción OC #{orden.id} — Proveedor: {orden.proveedor.name}'
-                )
-
-                inventory.quantity += qty
-                inventory.save()
-
-        orden.estado = 'RECIBIDA'
-        orden.branch = branch # Guardar sede de destino en el historial
-        orden.save()
-
-        # Finalizar ruta vinculada
+        # Finalizar ruta vinculada si existe
         from .models import DeliveryRoute
         ruta = DeliveryRoute.objects.filter(purchase_order=orden).first()
         if ruta:
@@ -448,10 +402,10 @@ class PurchaseOrderViewSet(BaseLogisticsViewSet):
 
         # Inventarios bajo mínimo
         inv_qs = Inventory.objects.filter(
-            branch__company=company,
+            warehouse__branch__company=company,
         ).filter(
-            quantity__lt=models.F('min_stock')
-        ).select_related('product', 'branch')
+            quantity__lt=F('min_stock')
+        ).select_related('product', 'warehouse__branch')
 
         # Calcular rotación de los últimos 30 días
         cutoff = timezone.now() - timedelta(days=30)
@@ -486,7 +440,7 @@ class PurchaseOrderViewSet(BaseLogisticsViewSet):
                 'cantidad_sugerida': cantidad_sugerida,
                 'ventas_30_dias': ventas_recientes,
                 'proveedor_sugerido': proveedor_sugerido,
-                'sede': inv.branch.name,
+                'sede': inv.warehouse.branch.name,
             })
 
         # Ordenar por mayor rotación primero

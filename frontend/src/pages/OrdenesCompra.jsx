@@ -103,9 +103,11 @@ export default function OrdenesCompra() {
     }, []);
     const role = user?.role || "EMPLEADO";
 
-    // ── Check for direct purchase requests via URL ────────────────────────────
+    // ── Check for direct requests via URL ───────────────────────────────────
     useEffect(() => {
         const searchParams = new URLSearchParams(window.location.search);
+        
+        // Caso 1: Sugerencia de compra (External)
         const pid = searchParams.get("producto_id");
         const pname = searchParams.get("producto_nombre");
         if (pid && pname) {
@@ -115,8 +117,19 @@ export default function OrdenesCompra() {
                 items: [{ producto_id: pid, producto_nombre: pname, cantidad_solicitada: 1, precio_unitario: 0 }]
             }));
             setShowOCModal(true);
-            
-            // Limpiar la URL para evitar que se abra de nuevo si el usuario recarga la página
+            window.history.replaceState({}, document.title, window.location.pathname);
+            return;
+        }
+
+        // Caso 2: Redirección desde Predicciones IA (Internal)
+        const selectedOrder = searchParams.get("selected_order");
+        const targetTab = searchParams.get("tab");
+        if (selectedOrder) {
+            setActiveTab(targetTab === "pedidos" ? "pedidos" : "compras");
+            if (targetTab === "pedidos") {
+                setPedidosTab("transito"); // Las de la IA nacen en tránsito
+                // Podríamos resaltar el ID si quisiéramos
+            }
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     }, []);
@@ -394,7 +407,7 @@ export default function OrdenesCompra() {
                         <ClipboardCheck className="w-4 h-4" /> Pedidos Internos
                     </button>
                     <button onClick={() => setActiveTab("compras")} className={TAB_STYLES(activeTab === "compras")}>
-                        <ShoppingCart className="w-4 h-4" /> Pedidos a Tiendas de Marca
+                        <ShoppingCart className="w-4 h-4" /> Órdenes de Compra (Proveedores)
                     </button>
                 </div>
 

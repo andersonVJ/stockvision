@@ -154,34 +154,58 @@ class InventoryService:
             return transfer
 
     @staticmethod
-    def process_order_delivery(order, received_items_map, user, target_branch):
-        """Procesa atómicamente la recepción de una orden (compra/pedido) para incrementar el stock."""
+    def process_reception(order_obj, received_items_map, user, target_branch):
+        """
+        Procesa de forma unificada la recepción de stock para Pedidos Internos u Órdenes de Compra.
+        order_obj: Instancia de Order (interno) o PurchaseOrder (externo).
+        received_items_map: Diccionario { item_id: cantidad_recibida }.
+        """
+        from .models import Inventory, StockMovement, Warehouse, Order
+        from django.utils import timezone
+        
         with transaction.atomic():
-            order = Order.objects.select_for_update().get(id=order.id)
-            if order.status not in ['APPROVED', 'IN_TRANSIT']:
-                raise ValidationError('Este pedido no puede ser recibido en su estado actual.')
-
+            # Determinar tipo de orden y bloquear registro
+            is_internal = isinstance(order_obj, Order)
+            
+            # Buscar el almacén de destino adecuado (priorizar STORAGE/QUARANTINE)
             warehouse = Warehouse.objects.filter(branch=target_branch, type__in=['STORAGE', 'QUARANTINE']).first()
             if not warehouse:
                 warehouse = Warehouse.objects.filter(branch=target_branch).first()
             if not warehouse:
-                raise ValidationError("La sede destino no tiene almacenes válidos.")
+                # Crear almacén si no existe
+                warehouse = Warehouse.objects.create(
+                    branch=target_branch, 
+                    name=f"Bodega Principal {target_branch.name}", 
+                    type='STORAGE'
+                )
 
-            for item in order.items.all():
-                rec_qty = received_items_map.get(item.id)
-                if rec_qty is None:
-                    rec_qty = item.requested_quantity
+            for item in order_obj.items.all():
+                # Obtener cantidad recibida (fallback a solicitada)
+                item_id_key = item.id
+                # El mapa puede tener llaves como strings por el JSON
+                rec_qty = received_items_map.get(item_id_key) or received_items_map.get(str(item_id_key))
                 
-                item.received_quantity = rec_qty
+                if rec_qty is None:
+                    rec_qty = getattr(item, 'requested_quantity', getattr(item, 'cantidad_solicitada', 0))
+                
+                try:
+                    rec_qty = int(rec_qty)
+                except (ValueError, TypeError):
+                    rec_qty = 0
+
+                item.cantidad_recibida = rec_qty # PurchaseOrderItem
+                if hasattr(item, 'received_quantity'):
+                    item.received_quantity = rec_qty # OrderItem
                 item.save()
                 
-                if rec_qty > 0:
-                    from django.utils import timezone
-                    item.product.fecha_ingreso = timezone.now()
-                    item.product.save(update_fields=['fecha_ingreso'])
+                product = getattr(item, 'product', getattr(item, 'producto', None))
+                
+                if rec_qty > 0 and product:
+                    product.fecha_ingreso = timezone.now()
+                    product.save(update_fields=['fecha_ingreso'])
                     
-                    inventory, created = Inventory.objects.select_for_update().get_or_create(
-                        product=item.product,
+                    inventory, _ = Inventory.objects.select_for_update().get_or_create(
+                        product=product,
                         warehouse=warehouse,
                         defaults={'quantity': 0, 'min_stock': 5, 'max_stock': 100}
                     )
@@ -191,14 +215,20 @@ class InventoryService:
                     
                     StockMovement.objects.create(
                         inventory=inventory,
-                        company=order.company,
+                        company=order_obj.company,
                         warehouse=warehouse,
+                        branch=target_branch,
                         user=user,
                         movement_type='ENTRY',
                         quantity=rec_qty,
-                        notes=f"Recepción de Pedido #{order.id}"
+                        notes=f"Recepción de {'Pedido' if is_internal else 'OC'} #{order_obj.id}"
                     )
 
-            order.status = 'DELIVERED'
-            order.save()
-            return order
+            if is_internal:
+                order_obj.status = 'DELIVERED'
+            else:
+                order_obj.estado = 'RECIBIDA'
+                order_obj.branch = target_branch
+            
+            order_obj.save()
+            return order_obj

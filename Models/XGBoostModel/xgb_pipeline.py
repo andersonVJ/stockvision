@@ -16,91 +16,100 @@ class XGBInventoryClassifier:
     
     # State Mapping Dictionary
     STATE_MAP = {
-        0: "CRITICAL",
+        0: "LOW_ROTATION",
         1: "STABLE",
-        2: "LOW_ROTATION"
+        2: "HIGH_ROTATION"
     }
 
     def __init__(self):
         self.model_path = Path(__file__).resolve().parent.parent / 'saved_models' / 'xgboost_model.pkl'
         self.model = None
 
-    def _determine_mock_label(self, row):
-        """
-        Helper for dummy training. Determines label based on Threshold rules.
-        In a real scenario, labels are strictly defined by historical events or manual categorization prior to training.
-        """
-        low_stock = InventoryThresholds.LOW_STOCK_THRESHOLD
-        over_stock = InventoryThresholds.OVERSTOCK_THRESHOLD
-        
-        ratio = row['stock_to_demand_ratio']
-        velocity = row['sales_velocity']
-        
-        if ratio < low_stock and velocity > InventoryThresholds.HIGH_ROTATION_THRESHOLD:
-            return 0  # CRITICAL
-        elif ratio > over_stock and velocity < InventoryThresholds.LOW_ROTATION_THRESHOLD:
-            return 2  # LOW_ROTATION
-        else:
-            return 1  # STABLE
-
     def extract_features(self, sales_df, inventory_df):
         """
-        Merges Sales and Inventory DataFrames to create the feature vector.
-        Features created:
-        - sales_velocity: average sales per day
-        - stock_to_demand_ratio: ratio of current stock vs 30 days demand
+        Generates the SAME features used during training.
         """
-        if sales_df.empty or inventory_df.empty:
-            raise ValueError("DataFrames cannot be empty.")
-            
-        # Calc velocity
-        velocity_df = sales_df.groupby('product_id')['qty'].mean().reset_index()
-        velocity_df.rename(columns={'qty': 'sales_velocity'}, inplace=True)
+        if sales_df.empty:
+            raise ValueError("Sales DataFrame cannot be empty.")
+
+        df = sales_df.copy()
+        df = df.sort_values(["product_id", "date"])
+
+        # Lag features
+        df["lag_7"] = df.groupby("product_id")["quantity"].shift(7)
+        df["lag_30"] = df.groupby("product_id")["quantity"].shift(30)
+
+        # Dates
+        df["month"] = df["date"].dt.month
+        df["day_of_week"] = df["date"].dt.dayofweek
         
-        # Calc total demand
-        demand_df = sales_df.groupby('product_id')['qty'].sum().reset_index()
-        demand_df.rename(columns={'qty': 'total_demand_30d'}, inplace=True)
+        # Trend feature (rolling mean difference)
+        df["rolling_mean_7"] = df.groupby("product_id")["quantity"].transform(lambda x: x.rolling(7).mean())
         
-        # Merge
-        merged = pd.merge(inventory_df, velocity_df, on='product_id', how='left')
-        merged = pd.merge(merged, demand_df, on='product_id', how='left').fillna(0)
-        
-        # Safety for division by zero
-        merged['stock_to_demand_ratio'] = merged['current_stock'] / merged['total_demand_30d'].replace(0, 1)
-        
-        return merged
+        # En lugar de dropna, llenamos con 0 para no perder productos con poco historial (nuevos)
+        df = df.fillna(0)
+
+        if not inventory_df.empty:
+            df = pd.merge(df, inventory_df, on="product_id", how="left")
+
+        return df
 
     def train(self, sales_df, inventory_df, labels=None):
         """
-        Trains the XGBoost classifier.
+        Trains the XGBoost classifier with improved labeling.
         """
         model_logger.info("Extracting features for XGBoost...")
         features_df = self.extract_features(sales_df, inventory_df)
         
         if labels is None:
-            # Generate mock labels based on the thresholds file
-            features_df['label'] = features_df.apply(self._determine_mock_label, axis=1)
-            y = features_df['label']
+            # Better labeling logic based on quantiles for balanced classes
+            q_low = features_df["quantity"].quantile(0.33)
+            q_high = features_df["quantity"].quantile(0.66)
+            
+            def classify_velocity(qty):
+                if qty > q_high: return 2   # HIGH
+                elif qty > q_low: return 1  # STABLE
+                return 0                     # LOW
+            
+            y = features_df["quantity"].apply(classify_velocity)
         else:
             y = labels
+            
+        # Asegurar siempre que las clases sean contiguas (0, 1, 2...) para XGBoost
+        from sklearn.preprocessing import LabelEncoder
+        le = LabelEncoder()
+        y = le.fit_transform(y)
+        self.label_encoder = le
 
-        X = features_df[['sales_velocity', 'stock_to_demand_ratio', 'current_stock']]
+        features = ["lag_7", "lag_30", "price", "promotion", "month", "day_of_week"]
+        X = features_df[features]
         
-        model_logger.info("Instantiating and fitting XGBoost Classifier...")
-        self.model = xgb.XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
+        model_logger.info("Training XGBoost with balanced rotation labels...")
+        self.model = xgb.XGBClassifier(
+            n_estimators=300,
+            max_depth=5,
+            learning_rate=0.05,
+            use_label_encoder=False, 
+            eval_metric='mlogloss'
+        )
         self.model.fit(X, y)
-        model_logger.info("XGBoost training completed successfully.")
+        model_logger.info("XGBoost training completed.")
         return self
 
     def predict(self, feature_df):
         """
         Returns predictions and probabilities.
         """
-        if not self.model:
-            raise ValueError("Model is not trained or loaded yet.")
-            
-        X = feature_df[['sales_velocity', 'stock_to_demand_ratio', 'current_stock']]
+        # Take only the last record per product for prediction
+        latest_df = feature_df.groupby("product_id").tail(1)
+        
+        features = ["lag_7", "lag_30", "price", "promotion", "month", "day_of_week"]
+        X = latest_df[features]
         preds = self.model.predict(X)
+        
+        # Inverse transform to get back original [0, 1, 2] classes
+        if hasattr(self, 'label_encoder'):
+            preds = self.label_encoder.inverse_transform(preds)
         
         results = []
         for p in preds:
@@ -111,10 +120,9 @@ class XGBInventoryClassifier:
         """
         Evaluates model metrics on test data.
         """
-        if not self.model:
-            raise ValueError("Model is not trained or loaded yet.")
-            
-        X_test = self.extract_features(sales_df_test, inventory_df_test)[['sales_velocity', 'stock_to_demand_ratio', 'current_stock']]
+        features_df = self.extract_features(sales_df_test, inventory_df_test)
+        features = ["lag_7", "lag_30", "price", "promotion", "month", "day_of_week"]
+        X_test = features_df[features]
         preds = self.model.predict(X_test)
         
         acc = accuracy_score(test_labels, preds)
@@ -141,6 +149,12 @@ class XGBInventoryClassifier:
                 "Contactar proveedores prioritarios.",
                 "Ajustar punto de reorden (Min Stock)."
             ]
+        elif state_code == "LOW_STOCK":
+            return [
+                "Crear orden de compra preventiva.",
+                "Revisar tiempos de entrega de proveedores.",
+                "Priorizar recepción en bodega."
+            ]
         elif state_code == "LOW_ROTATION":
             return [
                 "Aplicar promociones y descuentos.",
@@ -159,7 +173,11 @@ class XGBInventoryClassifier:
             return False
         try:
             self.model_path.parent.mkdir(exist_ok=True)
-            joblib.dump(self.model, self.model_path)
+            # Save both model and encoder
+            joblib.dump({
+                'model': self.model,
+                'label_encoder': getattr(self, 'label_encoder', None)
+            }, self.model_path)
             model_logger.info(f"XGBoost model saved successfully at {self.model_path}")
             return True
         except Exception as e:
@@ -170,7 +188,12 @@ class XGBInventoryClassifier:
         """Deserialization"""
         if self.model_path.exists():
             try:
-                self.model = joblib.load(self.model_path)
+                data = joblib.load(self.model_path)
+                if isinstance(data, dict):
+                    self.model = data.get('model')
+                    self.label_encoder = data.get('label_encoder')
+                else:
+                    self.model = data # Compatibility with old models
                 model_logger.info(f"XGBoost model loaded successfully from {self.model_path}")
                 return True
             except Exception as e:

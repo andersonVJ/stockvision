@@ -4,8 +4,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.utils import timezone
 from Models.prediction_service import PredictionService
-from inventory.models import Product
-from logistics.models import PurchaseOrder, PurchaseOrderItem, DeliveryRoute
+from inventory.models import Product, Order, OrderItem
+from companies.models import Branch
+from logistics.models import DeliveryRoute
 
 class InventoryPredictionsView(APIView):
     """
@@ -32,8 +33,8 @@ class InventoryPredictionsView(APIView):
 
 class AutoOrderAPIView(APIView):
     """
-    Endpoint para que la IA genere automáticamente una Orden de Compra 
-    (PurchaseOrder) y su respectiva Ruta de Entrega (DeliveryRoute).
+    Endpoint para que la IA genere automáticamente un Pedido Interno (Order)
+    y su respectiva Ruta de Entrega (DeliveryRoute).
     """
     permission_classes = [IsAuthenticated]
 
@@ -66,43 +67,108 @@ class AutoOrderAPIView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # Destino de la mercancía
-        dest_branch = user.branch
+        branch_id = request.data.get('branch_id')
+        dest_branch = None
 
-        # 1. Crear Orden de Compra (Directamente pre-aprobada y En Tránsito)
-        order = PurchaseOrder.objects.create(
-            company=company,
-            proveedor=provider,
-            branch=dest_branch,
-            generada_por=user,
-            aprobada_por=user,
-            estado='EN_TRANSITO',
-            notas='Pedido generado automáticamente por Inteligencia Artificial (StockVision AI).'
-        )
+        if branch_id:
+            try:
+                dest_branch = Branch.objects.get(id=branch_id, company=company)
+            except Branch.DoesNotExist:
+                return Response({'detail': 'Sede de destino no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        if not dest_branch:
+            dest_branch = user.branch or Branch.objects.filter(company=company).first()
 
-        # 2. Crear Item
-        PurchaseOrderItem.objects.create(
-            orden=order,
-            producto=product,
-            cantidad_solicitada=quantity,
-            precio_unitario=product.price
-        )
+        # 1. Determinar el flujo: ¿Es compra externa (Marca) o pedido interno?
+        marca_provider = product.providers.filter(tipo='TIENDA_MARCA').first()
+        is_external = marca_provider is not None
+        
+        order_id = None
+        route_id = None
 
-        # 3. Crear Ruta de Logística para que el transportador/recepción lo vea en "Tránsito"
-        ruta = DeliveryRoute.objects.create(
-            company=company,
-            branch=dest_branch,
-            purchase_order=order,
-            tipo='ENTRADA',
-            origin_supplier=provider.name,
-            fecha=timezone.localdate(),
-            zona='Recepción General',
-            transportador='Suministro por IA',
-            estado='EN_CURSO',
-            notas=f'Ruta automática de entrada generada para OC #{order.id} requerida por IA.'
-        )
+        if is_external:
+            # --- FLUJO COMPRA EXTERNA (ORDEN DE COMPRA) ---
+            from logistics.models import PurchaseOrder, PurchaseOrderItem
+            
+            # Crear Orden de Compra (OC)
+            oc = PurchaseOrder.objects.create(
+                company=company,
+                proveedor=marca_provider,
+                branch=dest_branch,
+                generada_por=user,
+                aprobada_por=user,
+                estado='APROBADA', 
+                notas='Orden de compra generada automáticamente por StockVision AI para Tienda de Marca.'
+            )
+            
+            # Crear Item de la OC
+            PurchaseOrderItem.objects.create(
+                orden=oc,
+                producto=product,
+                cantidad_solicitada=quantity,
+                precio_unitario=product.price
+            )
+            
+            # Crear Ruta de Logística (Tipo ENTRADA)
+            ruta = DeliveryRoute.objects.create(
+                company=company,
+                branch=dest_branch,
+                purchase_order=oc,
+                tipo='ENTRADA',
+                origin_supplier=marca_provider.name,
+                fecha=timezone.localdate(),
+                zona='Recepción Internacional/Marca',
+                transportador='Logística de Marca',
+                estado='EN_CURSO',
+                notas=f'Ruta de entrada automática para OC #{oc.id} (Marca: {marca_provider.name})'
+            )
+            order_id = oc.id
+            route_id = ruta.id
+            flow_type = 'EXTERNAL'
+            
+        else:
+            # --- FLUJO PEDIDO INTERNO (ORDEN INTERNA) ---
+            from inventory.models import Order, OrderItem
+            
+            # Crear Pedido Interno
+            order = Order.objects.create(
+                company=company,
+                branch=dest_branch,
+                provider=provider, # Distribuidor local o interno
+                created_by=user,
+                approved_by=user,
+                status='IN_TRANSIT',
+                notes='Pedido generado automáticamente por Inteligencia Artificial (StockVision AI).'
+            )
+            
+            # Crear Item del Pedido
+            OrderItem.objects.create(
+                order=order,
+                product=product,
+                requested_quantity=quantity
+            )
+            
+            # Crear Ruta de Logística (Tipo INTERNO)
+            ruta = DeliveryRoute.objects.create(
+                company=company,
+                branch=dest_branch,
+                internal_order=order,
+                tipo='INTERNO',
+                origin_supplier=provider.name if provider else "Suministro Interno",
+                fecha=timezone.localdate(),
+                zona='Recepción General',
+                transportador='Suministro por IA',
+                estado='EN_CURSO',
+                notas=f'Ruta automática interna generada para Pedido #{order.id} requerida por IA.'
+            )
+            order_id = order.id
+            route_id = ruta.id
+            flow_type = 'INTERNAL'
 
         return Response({
-            'detail': 'Pedido y ruta generados exitosamente.',
-            'order_id': order.id,
-            'route_id': ruta.id
+            'status': 'success',
+            'order_id': order_id,
+            'route_id': route_id,
+            'flow_type': flow_type,
+            'message': f'Solicitud de abastecimiento {flow_type} generada correctamente.'
         }, status=status.HTTP_201_CREATED)

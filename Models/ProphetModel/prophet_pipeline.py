@@ -20,12 +20,12 @@ class ProphetDemandPredictor:
         """
         Formats generic dataframe to Prophet's expected 'ds' and 'y' columns.
         """
-        if df.empty or 'date' not in df.columns or 'qty' not in df.columns:
-            raise ValueError("Dataframe must contain 'date' and 'qty' columns.")
+        if df.empty or 'date' not in df.columns or 'quantity' not in df.columns:
+            raise ValueError("Dataframe must contain 'date' and 'quantity' columns.")
         
         # Aggregate by day
-        prophet_df = df.groupby('date')['qty'].sum().reset_index()
-        prophet_df.rename(columns={'date': 'ds', 'qty': 'y'}, inplace=True)
+        prophet_df = df.groupby('date')['quantity'].sum().reset_index()
+        prophet_df.rename(columns={'date': 'ds', 'quantity': 'y'}, inplace=True)
         return prophet_df
 
     def train(self, df):

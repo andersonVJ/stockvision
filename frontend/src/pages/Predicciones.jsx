@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import api from "../api/api";
 import {
@@ -8,6 +9,7 @@ import {
 import Swal from "sweetalert2";
 
 export default function Predicciones() {
+    const navigate = useNavigate();
     const [predictions, setPredictions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -42,65 +44,86 @@ export default function Predicciones() {
         const demand = forecast?.next_30_days_demand ?? 0;
         const qty = Math.max(1, demand);
 
-        const confirm = await Swal.fire({
+        // Obtener sedes disponibles para el selector
+        let branches = [];
+        try {
+            const res = await api.get("/companies/branches/", {
+                headers: { Authorization: `Bearer ${getTokens().access}` }
+            });
+            branches = res.data;
+        } catch {
+            Swal.fire("Error", "No se pudieron cargar las sedes.", "error");
+            return;
+        }
+
+        const { value: formValues } = await Swal.fire({
             title: "¿Generar Pedido Automático?",
             html: `
                 <div style="text-align:left; font-size:14px; line-height:1.8">
                     <p><b>Producto:</b> ${pred.product_name}</p>
-                    <p><b>Stock actual:</b> ${Math.round(pred.current_stock)} uds.</p>
-                    <p><b>Demanda proyectada (30 días):</b> <span style="color:#4f46e5;font-weight:700">${qty} uds.</span></p>
+                    <p><b>Demanda proyectada:</b> <span style="color:#4f46e5;font-weight:700">${qty} uds.</span></p>
                     <hr style="margin:12px 0; border-color:#e2e8f0" />
-                    <p style="color:#64748b">Se generará una <b>Orden de Compra</b> a tu proveedor y una <b>Ruta de Entrega</b> automáticamente.</p>
+                    <label style="display:block; margin-bottom:4px; font-weight:600; color:#475569">Sede de destino:</label>
+                    <select id="swal-branch" class="swal2-select" style="width:100%; margin:0; display:block">
+                        <option value="">Seleccionar sede...</option>
+                        ${branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('')}
+                    </select>
                 </div>
             `,
             icon: "question",
-            iconColor: "#4f46e5",
             showCancelButton: true,
             confirmButtonText: "✓ Sí, generar pedido",
             cancelButtonText: "Cancelar",
             confirmButtonColor: "#4f46e5",
-            cancelButtonColor: "#94a3b8",
-            background: "#f8fafc",
-            borderRadius: "16px",
+            preConfirm: () => {
+                const branchId = document.getElementById('swal-branch').value;
+                if (!branchId) {
+                    Swal.showValidationMessage('Debes seleccionar una sede');
+                    return false;
+                }
+                return { branchId };
+            }
         });
 
-        if (!confirm.isConfirmed) return;
+        if (!formValues) return;
 
         setOrderingId(pred.product_id);
         try {
             const response = await api.post(
                 "/predictions/auto_order/",
-                { product_id: pred.product_id, quantity: qty },
+                { 
+                    product_id: pred.product_id, 
+                    quantity: qty,
+                    branch_id: formValues.branchId 
+                },
                 { headers: { Authorization: `Bearer ${getTokens().access}` } }
             );
 
+            const isExternal = response.data.flow_type === 'EXTERNAL';
+            const title = isExternal ? "¡Compra Generada! 🚀" : "¡Pedido Generado! 🚀";
+            const orderLabel = isExternal ? "Orden de Compra" : "Pedido Interno";
+            const tabParam = isExternal ? "compras" : "pedidos";
+
             await Swal.fire({
-                title: "¡Pedido Generado! 🚀",
+                title: title,
                 html: `
                     <div style="text-align:left; font-size:14px; line-height:1.9">
-                        <p>✅ <b>Orden de Compra #${response.data.order_id}</b> creada</p>
+                        <p>✅ <b>${orderLabel} #${response.data.order_id}</b> creado</p>
                         <p>🚚 <b>Ruta de Entrega #${response.data.route_id}</b> creada y en tránsito</p>
                         <hr style="margin:10px 0; border-color:#e2e8f0" />
-                        <p style="color:#64748b; font-size:13px">Puedes ver el pedido en el módulo de <b>Logística → Órdenes de Compra</b>.</p>
+                        <p style="color:#64748b; font-size:13px">Redirigiendo al módulo de <b>${isExternal ? 'Órdenes de Compra' : 'Pedidos Internos'}</b>...</p>
                     </div>
                 `,
                 icon: "success",
-                iconColor: "#10b981",
-                confirmButtonText: "Entendido",
-                confirmButtonColor: "#4f46e5",
-                background: "#f0fdf4",
+                timer: 2000,
+                showConfirmButton: false,
             });
+
+            navigate(`/compras?selected_order=${response.data.order_id}&tab=${tabParam}`);
+
         } catch (err) {
             const msg = err.response?.data?.detail || "Error desconocido al generar el pedido.";
-            await Swal.fire({
-                title: "Error al Generar Pedido",
-                text: msg,
-                icon: "error",
-                iconColor: "#ef4444",
-                confirmButtonText: "Cerrar",
-                confirmButtonColor: "#ef4444",
-                background: "#fef2f2",
-            });
+            Swal.fire("Error", msg, "error");
         } finally {
             setOrderingId(null);
         }

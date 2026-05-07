@@ -378,7 +378,7 @@ class OrderViewSet(BaseInventoryViewSet):
         from rest_framework.exceptions import ValidationError
         
         try:
-            InventoryService.process_order_delivery(order, received_items_map, user, target_branch)
+            InventoryService.process_reception(order, received_items_map, user, target_branch)
         except ValidationError as e:
             return Response({'error': str(e)}, status=400)
         

@@ -65,13 +65,13 @@ export default function Inicio() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 font-sans text-slate-800 relative">
+    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 font-sans text-slate-800 relative">
 
       {/* Sidebar Component */}
       <Sidebar />
 
       {/* Main Content Area */}
-      <div className="flex-1 p-8 flex flex-col relative">
+      <div className="flex-1 p-4 md:p-8 flex flex-col relative">
 
         {/* Top Bar with Notifications */}
         <div className="absolute top-8 right-8 z-10">

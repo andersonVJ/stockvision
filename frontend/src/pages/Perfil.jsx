@@ -66,9 +66,9 @@ export default function Perfil() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 font-sans text-slate-800">
+    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 font-sans text-slate-800">
       <Sidebar />
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-4 md:p-8">
         <div className="max-w-3xl mx-auto">
           <h1 className="text-3xl font-bold mb-8 text-slate-800">Mi Perfil</h1>
           

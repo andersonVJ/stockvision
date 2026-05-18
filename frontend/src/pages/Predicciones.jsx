@@ -170,7 +170,7 @@ export default function Predicciones() {
     };
 
     return (
-        <div className="flex min-h-screen bg-slate-50 font-sans">
+        <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 font-sans">
             <Sidebar />
 
             <div className="flex-1 p-10 overflow-y-auto">

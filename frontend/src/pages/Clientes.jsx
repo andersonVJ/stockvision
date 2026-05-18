@@ -124,7 +124,7 @@ export default function Clientes() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans text-slate-800">
+    <div className="flex flex-col md:flex-row h-screen bg-slate-50 font-sans text-slate-800">
       <Sidebar />
       <div className="flex-1 overflow-auto relative">
         <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10">

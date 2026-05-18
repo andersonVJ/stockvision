@@ -198,11 +198,11 @@ export default function Logistica() {
     }
 
     return (
-        <div className="flex min-h-screen bg-slate-50 font-sans">
+        <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 font-sans">
             <Sidebar />
 
             {/* Left panel — route list */}
-            <div className="w-80 shrink-0 flex flex-col bg-white border-r border-slate-100 overflow-hidden">
+            <div className="w-full md:w-80 shrink-0 flex flex-col bg-white border-b md:border-b-0 md:border-r border-slate-100 overflow-hidden h-[350px] md:h-auto">
                 {/* Header */}
                 <div className="p-5 border-b border-slate-100">
                     <div className="flex items-center gap-2 mb-3">
@@ -292,7 +292,7 @@ export default function Logistica() {
                 {selectedRuta ? (
                     <>
                         {/* Route info bar */}
-                        <div className="bg-white border-b border-slate-100 px-6 py-3 flex items-center justify-between">
+                        <div className="bg-white border-b border-slate-100 px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div className="flex items-center gap-4">
                                 <div>
                                     <h2 className="font-bold text-slate-800 text-sm">

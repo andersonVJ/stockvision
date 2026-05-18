@@ -95,7 +95,7 @@ const Dashboard = () => {
 
   if (loading && !stats) {
     return (
-      <div className="flex min-h-screen bg-gray-50">
+      <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
         <Sidebar />
         <div className="flex-1 flex items-center justify-center">
           <RefreshCw className="animate-spin text-blue-600" size={48} />
@@ -105,10 +105,10 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
       <Sidebar />
       
-      <main className="flex-1 p-8 overflow-y-auto">
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
         <header className="flex justify-between items-center mb-10">
           <div>
             <h1 className="text-3xl font-black text-gray-900 tracking-tight">Dashboard Analítico</h1>

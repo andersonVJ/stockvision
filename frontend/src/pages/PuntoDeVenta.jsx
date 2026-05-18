@@ -183,7 +183,7 @@ export default function PuntoDeVenta() {
 
   if (user?.role === "ADMIN") {
     return (
-      <div className="flex h-screen bg-slate-50 font-sans">
+      <div className="flex flex-col md:flex-row h-screen bg-slate-50 font-sans">
         <Sidebar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center bg-white p-8 rounded-2xl shadow-sm border border-slate-200 max-w-md">
@@ -205,16 +205,16 @@ export default function PuntoDeVenta() {
   }
 
   return (
-    <div className="flex bg-slate-50 font-sans text-slate-800 h-screen overflow-hidden print:bg-white">
+    <div className="flex flex-col md:flex-row bg-slate-50 font-sans text-slate-800 h-screen overflow-hidden print:bg-white">
       
       {/* Vista Principal Normal */}
-      <div className={`flex flex-1 w-full h-full max-h-screen ${invoiceData ? 'hidden' : ''} print:hidden`}>
+      <div className={`flex flex-col md:flex-row flex-1 w-full h-full max-h-screen ${invoiceData ? 'hidden' : ''} print:hidden`}>
         <Sidebar className="print:hidden h-full sticky top-0" />
-        <div className="flex-1 p-8 overflow-y-auto max-h-screen">
-          <div className="flex gap-6 h-full pb-8">
+        <div className="flex-1 p-4 md:p-8 overflow-y-auto max-h-screen">
+          <div className="flex flex-col lg:flex-row gap-6 h-full pb-8">
           
           {/* CATALOGO */}
-          <div className="flex-[2] bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col h-[calc(100vh-4rem)]">
+          <div className="flex-[2] bg-white rounded-2xl shadow-sm border border-slate-100 p-4 md:p-6 flex flex-col h-[500px] lg:h-[calc(100vh-4rem)]">
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold text-slate-800">Punto de Venta</h1>
               
@@ -237,7 +237,7 @@ export default function PuntoDeVenta() {
             {loading ? (
               <p className="text-slate-500 text-center py-10">Cargando catálogo...</p>
             ) : (
-              <div className="grid grid-cols-3 gap-4 overflow-y-auto flex-1 content-start pr-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto flex-1 content-start pr-2">
                 {inventories
                   .filter(inv => selectedBranchId ? String(inv.branch) === String(selectedBranchId) : true)
                   .map(inv => {
@@ -286,7 +286,7 @@ export default function PuntoDeVenta() {
           </div>
 
           {/* CHECKOUT / CART */}
-          <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col h-[calc(100vh-4rem)]">
+          <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 p-4 md:p-6 flex flex-col h-[500px] lg:h-[calc(100vh-4rem)]">
             <h2 className="text-xl font-bold text-slate-800 mb-4 flex justify-between">
               Carrito 
               <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-sm font-bold">{cart.length}</span>

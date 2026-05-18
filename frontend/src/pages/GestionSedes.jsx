@@ -136,9 +136,9 @@ export default function GestionSedes() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 font-sans text-slate-800">
+    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 font-sans text-slate-800">
       <Sidebar />
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-4 md:p-8">
         <div className="max-w-4xl mx-auto relative">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8">
             <h1 className="text-3xl font-bold text-slate-800 w-full sm:w-auto text-left">

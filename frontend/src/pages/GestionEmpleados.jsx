@@ -177,9 +177,9 @@ export default function GestionEmpleados() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 font-sans text-slate-800">
+    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 font-sans text-slate-800">
       <Sidebar />
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-4 md:p-8">
         <div className="max-w-6xl mx-auto relative">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold text-slate-800">

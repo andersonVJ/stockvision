@@ -81,13 +81,13 @@ export default function Sidebar() {
             {/* Mobile Backdrop */}
             {isOpen && (
                 <div 
-                    className="md:hidden fixed inset-0 bg-slate-800/50 z-40 backdrop-blur-sm transition-opacity"
+                    className="md:hidden fixed inset-0 bg-slate-800/50 z-[9998] backdrop-blur-sm transition-opacity"
                     onClick={() => setIsOpen(false)}
                 />
             )}
 
             {/* Sidebar Container */}
-            <div className={`fixed md:sticky top-0 left-0 h-screen w-64 shrink-0 bg-white border-r border-slate-200 z-50 transition-transform duration-300 transform ${isOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 flex flex-col`}>
+            <div className={`fixed md:sticky top-0 left-0 h-screen w-64 shrink-0 bg-white border-r border-slate-200 z-[9999] transition-transform duration-300 transform ${isOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 flex flex-col`}>
 
                 {/* Close Button inside Sidebar (Mobile) */}
                 <div className="md:hidden absolute top-4 right-4">
@@ -158,7 +158,6 @@ export default function Sidebar() {
 
             </div>
 
-        </div>
         </>
     );
 }

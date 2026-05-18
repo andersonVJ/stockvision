@@ -405,7 +405,7 @@ export default function OrdenesCompra() {
         `flex items-center gap-2 px-5 py-3 font-semibold text-sm rounded-t-xl border-b-2 transition-colors ${active ? "border-blue-600 text-blue-700 bg-white" : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`;
 
     return (
-        <div className="flex min-h-screen bg-slate-50 font-sans">
+        <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 font-sans">
             <Sidebar />
             <main className="flex-1 flex flex-col overflow-hidden">
 
@@ -431,7 +431,7 @@ export default function OrdenesCompra() {
                     TAB 1 — PEDIDOS INTERNOS
                 ═══════════════════════════════════════════════ */}
                 {activeTab === "pedidos" && (
-                    <div className="flex-1 p-8 overflow-auto">
+                    <div className="flex-1 p-4 md:p-8 overflow-auto">
                         <div className="flex items-center justify-between mb-5">
                             <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
                                 {(role === "ADMIN" || role === "JEFE_INVENTARIO") && (
@@ -523,7 +523,7 @@ export default function OrdenesCompra() {
                     TAB 2 — ÓRDENES DE COMPRA A PROVEEDORES
                 ═══════════════════════════════════════════════ */}
                 {activeTab === "compras" && (
-                    <div className="flex-1 p-8 overflow-auto">
+                    <div className="flex-1 p-4 md:p-8 overflow-auto">
 
                         {/* Explainer banner */}
                         <div className="flex gap-4 mb-6 p-4 bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-100 rounded-2xl">

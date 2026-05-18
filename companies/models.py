@@ -21,7 +21,7 @@ class PasswordResetToken(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def is_expired(self):
-        return timezone.now() > self.created_at + timedelta(minutes=15)
+        return timezone.now() > self.created_at + timedelta(minutes=5)
 
 class Company(models.Model):
     name = models.CharField(max_length=200)

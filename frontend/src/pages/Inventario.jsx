@@ -29,6 +29,10 @@ export default function Inventario() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [branchFilter, setBranchFilter] = useState("");
 
+  // Kardex Filters
+  const [movYearFilter, setMovYearFilter] = useState(new Date().getFullYear());
+  const [movMonthFilter, setMovMonthFilter] = useState(new Date().getMonth() + 1);
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem("user");
@@ -51,7 +55,7 @@ export default function Inventario() {
         setInventories(invRes);
         setCategories(catRes);
       } else if (activeTab === "movimientos") {
-        setMovements(await getMovements());
+        setMovements(await getMovements({ year: movYearFilter, month: movMonthFilter }));
         setInventories(await getInventories());
       } else if (activeTab === "alertas") {
         setAlerts(await getDashboardAlerts());
@@ -64,7 +68,7 @@ export default function Inventario() {
 
   useEffect(() => {
     loadData();
-  }, [activeTab]);
+  }, [activeTab, movYearFilter, movMonthFilter]);
 
   // CATEGORY FORM
   const [newCatName, setNewCatName] = useState("");
@@ -498,9 +502,49 @@ export default function Inventario() {
               {/* TAB: MOVIMIENTOS */}
               {activeTab === "movimientos" && (
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-slate-800">Kardex de Movimientos</h2>
-                    <button onClick={() => setShowMovementModal(true)} className="bg-slate-800 hover:bg-slate-900 transition-colors text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-sm">+ Registrar Movilidad</button>
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                    <div className="flex flex-col gap-1">
+                      <h2 className="text-xl font-bold text-slate-800">Kardex de Movimientos</h2>
+                      <p className="text-xs text-slate-500 font-medium">Historial detallado de entradas y salidas de inventario</p>
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                      <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-1.5 rounded-xl">
+                        <select 
+                          value={movYearFilter} 
+                          onChange={e => setMovYearFilter(e.target.value)}
+                          className="bg-transparent border-none text-sm font-bold text-slate-700 focus:ring-0 cursor-pointer px-2"
+                        >
+                          {[...Array(5)].map((_, i) => {
+                            const y = new Date().getFullYear() - i;
+                            return <option key={y} value={y}>{y}</option>
+                          })}
+                        </select>
+                        <div className="w-px h-4 bg-slate-200"></div>
+                        <select 
+                          value={movMonthFilter} 
+                          onChange={e => setMovMonthFilter(e.target.value)}
+                          className="bg-transparent border-none text-sm font-bold text-slate-700 focus:ring-0 cursor-pointer px-2"
+                        >
+                          <option value="1">Enero</option>
+                          <option value="2">Febrero</option>
+                          <option value="3">Marzo</option>
+                          <option value="4">Abril</option>
+                          <option value="5">Mayo</option>
+                          <option value="6">Junio</option>
+                          <option value="7">Julio</option>
+                          <option value="8">Agosto</option>
+                          <option value="9">Septiembre</option>
+                          <option value="10">Octubre</option>
+                          <option value="11">Noviembre</option>
+                          <option value="12">Diciembre</option>
+                        </select>
+                      </div>
+
+                      <button onClick={() => setShowMovementModal(true)} className="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm flex items-center gap-2">
+                        + Registrar Movilidad
+                      </button>
+                    </div>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm text-slate-600">

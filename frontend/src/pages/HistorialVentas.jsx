@@ -9,16 +9,40 @@ export default function HistorialVentas() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [user, setUser] = useState({});
+  const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [year, setYear] = useState(new Date().getFullYear());
+
+  const months = [
+    { value: 1, label: "Enero" },
+    { value: 2, label: "Febrero" },
+    { value: 3, label: "Marzo" },
+    { value: 4, label: "Abril" },
+    { value: 5, label: "Mayo" },
+    { value: 6, label: "Junio" },
+    { value: 7, label: "Julio" },
+    { value: 8, label: "Agosto" },
+    { value: 9, label: "Septiembre" },
+    { value: 10, label: "Octubre" },
+    { value: 11, label: "Noviembre" },
+    { value: 12, label: "Diciembre" },
+  ];
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) setUser(JSON.parse(storedUser));
-    fetchSales();
   }, []);
 
+  useEffect(() => {
+    fetchSales();
+  }, [month, year]);
+
   const fetchSales = async () => {
+    setLoading(true);
     try {
-      const data = await getSales();
+      const data = await getSales({ month, year });
       setSales(Array.isArray(data) ? data : data.results || []);
     } catch (error) {
       console.error("Error fetching sales:", error);
@@ -51,15 +75,38 @@ export default function HistorialVentas() {
                 <FileText className="w-5 h-5 text-slate-400" />
                 Facturas Emitidas
               </h2>
-              <div className="relative w-64">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Buscar por ID, Sede o Cajero..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
-                />
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200">
+                  <select
+                    value={month}
+                    onChange={(e) => setMonth(parseInt(e.target.value))}
+                    className="pl-3 pr-2 py-1.5 bg-transparent text-sm focus:outline-none font-medium cursor-pointer"
+                  >
+                    {months.map(m => (
+                      <option key={m.value} value={m.value}>{m.label}</option>
+                    ))}
+                  </select>
+                  <div className="w-px h-4 bg-slate-200" />
+                  <select
+                    value={year}
+                    onChange={(e) => setYear(parseInt(e.target.value))}
+                    className="pl-2 pr-3 py-1.5 bg-transparent text-sm focus:outline-none font-medium cursor-pointer"
+                  >
+                    {years.map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="relative w-64">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar en este periodo..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+                  />
+                </div>
               </div>
             </div>
 

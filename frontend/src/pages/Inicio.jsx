@@ -103,15 +103,18 @@ export default function Inicio() {
                     ) : (
                       <ul className="space-y-1">
                         {pendingOrders.map(o => (
-                          <li key={'ord'+o.id} className="p-3 bg-yellow-50 hover:bg-yellow-100 rounded-xl transition-colors border-b border-white last:border-0 cursor-pointer" onClick={() => window.location.href='/orders'}>
+                          <li key={'ord'+o.id} className="p-3 bg-yellow-50 hover:bg-yellow-100 rounded-xl transition-colors border-b border-white last:border-0 cursor-pointer" onClick={() => window.location.href='/compras?tab=pedidos'}>
                             <p className="text-sm font-bold text-yellow-800">Pedido #{o.id} por Aprobar</p>
                             <p className="text-xs text-yellow-700 font-medium">Creado por {o.created_by_name}</p>
                           </li>
                         ))}
                         {alerts.map((a) => (
-                          <li key={'alr'+a.id} className="p-3 hover:bg-red-50/50 rounded-xl transition-colors border-b border-slate-50 last:border-0 cursor-pointer" onClick={() => window.location.href=`/compras?producto_id=${a.product}&producto_nombre=${encodeURIComponent(a.product_name)}`}>
-                            <p className="text-sm font-semibold text-slate-800">{a.product_name}</p>
-                            <p className="text-xs text-red-600 font-medium">Stock Crítico: {a.quantity} <span className="text-slate-400 font-normal ml-1">(Mínimo: {a.min_stock})</span></p>
+                          <li key={'alr'+a.id} className="p-3 hover:bg-red-50/50 rounded-xl transition-colors border-b border-slate-50 last:border-0 cursor-pointer" onClick={() => window.location.href=`/compras?internal_product_id=${a.product}`}>
+                            <div className="flex justify-between items-start">
+                              <p className="text-sm font-semibold text-slate-800">{a.product_name}</p>
+                              <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase">{a.branch_name}</span>
+                            </div>
+                            <p className="text-xs text-red-600 font-medium mt-0.5">Stock Crítico: {a.quantity} <span className="text-slate-400 font-normal ml-1">(Mínimo: {a.min_stock})</span></p>
                           </li>
                         ))}
                       </ul>

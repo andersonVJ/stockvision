@@ -103,37 +103,6 @@ export default function OrdenesCompra() {
     }, []);
     const role = user?.role || "EMPLEADO";
 
-    // ── Check for direct requests via URL ───────────────────────────────────
-    useEffect(() => {
-        const searchParams = new URLSearchParams(window.location.search);
-        
-        // Caso 1: Sugerencia de compra (External)
-        const pid = searchParams.get("producto_id");
-        const pname = searchParams.get("producto_nombre");
-        if (pid && pname) {
-            setActiveTab("compras");
-            setFormOC(p => ({
-                ...p,
-                items: [{ producto_id: pid, producto_nombre: pname, cantidad_solicitada: 1, precio_unitario: 0 }]
-            }));
-            setShowOCModal(true);
-            window.history.replaceState({}, document.title, window.location.pathname);
-            return;
-        }
-
-        // Caso 2: Redirección desde Predicciones IA (Internal)
-        const selectedOrder = searchParams.get("selected_order");
-        const targetTab = searchParams.get("tab");
-        if (selectedOrder) {
-            setActiveTab(targetTab === "pedidos" ? "pedidos" : "compras");
-            if (targetTab === "pedidos") {
-                setPedidosTab("transito"); // Las de la IA nacen en tránsito
-                // Podríamos resaltar el ID si quisiéramos
-            }
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
-    }, []);
-
     // ── Pedidos internos (Pedidos.jsx merged) ─────────────────────────────────
     const [orders, setOrders] = useState([]);
     const [products, setProducts] = useState([]);
@@ -269,6 +238,53 @@ export default function OrdenesCompra() {
     const [recepBranch, setRecepBranch] = useState("");
     const [selectedBrand, setSelectedBrand] = useState(null); // { name, website, emoji, color }
     const [customBrandName, setCustomBrandName] = useState("");
+
+    // ── Check for direct requests via URL ───────────────────────────────────
+    useEffect(() => {
+        const searchParams = new URLSearchParams(window.location.search);
+        
+        // Caso 1: Sugerencia de compra (External)
+        const pid = searchParams.get("producto_id");
+        const pname = searchParams.get("producto_nombre");
+        if (pid && pname) {
+            setActiveTab("compras");
+            setFormOC(p => ({
+                ...p,
+                items: [{ producto_id: pid, producto_nombre: pname, cantidad_solicitada: 1, precio_unitario: 0 }]
+            }));
+            setShowOCModal(true);
+            window.history.replaceState({}, document.title, window.location.pathname);
+            return;
+        }
+
+        // Caso 2: Redirección desde Predicciones IA (Internal)
+        const selectedOrder = searchParams.get("selected_order");
+        const targetTab = searchParams.get("tab");
+        if (selectedOrder) {
+            setActiveTab(targetTab === "pedidos" ? "pedidos" : "compras");
+            if (targetTab === "pedidos") {
+                setPedidosTab("transito"); // Las de la IA nacen en tránsito
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+            return;
+        }
+
+        // Caso 3: Redirección para Pedido Interno desde Alertas
+        const internalProductId = searchParams.get("internal_product_id");
+        if (internalProductId) {
+            setActiveTab("pedidos");
+            setShowCreateModal(true);
+            setNewOrderItems([{ product: internalProductId, requested_quantity: 1 }]);
+            window.history.replaceState({}, document.title, window.location.pathname);
+            return;
+        }
+        // Caso 4: Cambio de pestaña simple
+        const tab = searchParams.get("tab");
+        if (tab === "pedidos") {
+            setActiveTab("pedidos");
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }, [setActiveTab, setFormOC, setShowOCModal, setPedidosTab, setShowCreateModal, setNewOrderItems]);
 
     const fetchOrdenes = useCallback(async () => {
         setLoadingOC(true);

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
     Home,
@@ -15,12 +16,15 @@ import {
     Receipt,
     Briefcase,
     Route,
-    ClipboardList
+    ClipboardList,
+    Menu,
+    X
 } from "lucide-react";
 
 import Logo from "./Logo";
 
 export default function Sidebar() {
+    const [isOpen, setIsOpen] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
     let user = {};
@@ -60,30 +64,63 @@ export default function Sidebar() {
     const isActive = (path) => location.pathname === path;
 
     return (
-        <div className="flex flex-col h-screen sticky top-0 w-64 shrink-0 bg-white border-r border-slate-200">
-
-            {/* Head / Logo */}
-            <div className="flex items-center p-6 h-24">
+        <>
+            {/* Mobile Header & Hamburger */}
+            <div className="md:hidden flex items-center justify-between p-4 bg-white border-b border-slate-200 sticky top-0 z-40 w-full shadow-sm">
                 <div className="flex items-center gap-2">
-                    <Logo />
-                    <div className="flex flex-col">
-                        <h1 className="text-xl font-bold tracking-tight text-slate-800 leading-tight">
-                            StockVision
-                        </h1>
-                        <span className="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mt-0.5">
-                            Gestión Inteligente
-                        </span>
+                    <div className="scale-75 origin-left">
+                        <Logo />
                     </div>
+                    <h1 className="text-lg font-bold text-slate-800">StockVision</h1>
                 </div>
+                <button onClick={() => setIsOpen(!isOpen)} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                    {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                </button>
             </div>
 
-            {/* Navigation Links */}
-            <nav className="flex-1 px-4 py-2 overflow-y-auto">
-                <ul className="space-y-1.5">
-                    {filteredMenuItems.map((item) => (
-                        <li key={item.name}>
-                            <button
-                                onClick={() => navigate(item.path)}
+            {/* Mobile Backdrop */}
+            {isOpen && (
+                <div 
+                    className="md:hidden fixed inset-0 bg-slate-800/50 z-40 backdrop-blur-sm transition-opacity"
+                    onClick={() => setIsOpen(false)}
+                />
+            )}
+
+            {/* Sidebar Container */}
+            <div className={`fixed md:sticky top-0 left-0 h-screen w-64 shrink-0 bg-white border-r border-slate-200 z-50 transition-transform duration-300 transform ${isOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 flex flex-col`}>
+
+                {/* Close Button inside Sidebar (Mobile) */}
+                <div className="md:hidden absolute top-4 right-4">
+                    <button onClick={() => setIsOpen(false)} className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                {/* Head / Logo (Desktop only) */}
+                <div className="hidden md:flex items-center p-6 h-24">
+                    <div className="flex items-center gap-2">
+                        <Logo />
+                        <div className="flex flex-col">
+                            <h1 className="text-xl font-bold tracking-tight text-slate-800 leading-tight">
+                                StockVision
+                            </h1>
+                            <span className="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mt-0.5">
+                                Gestión Inteligente
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Navigation Links */}
+                <nav className="flex-1 px-4 py-2 overflow-y-auto mt-12 md:mt-0">
+                    <ul className="space-y-1.5">
+                        {filteredMenuItems.map((item) => (
+                            <li key={item.name}>
+                                <button
+                                    onClick={() => {
+                                        navigate(item.path);
+                                        setIsOpen(false);
+                                    }}
                                 className={`w-full flex items-center px-4 py-3 rounded-xl transition-all font-medium text-sm group ${isActive(item.path)
                                     ? "bg-blue-50 text-blue-700"
                                     : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
@@ -119,6 +156,9 @@ export default function Sidebar() {
                 </button>
             </div>
 
+            </div>
+
         </div>
+        </>
     );
 }

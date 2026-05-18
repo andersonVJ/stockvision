@@ -262,6 +262,34 @@ export default function GestionSedes() {
                 </div>
                 <input type="text" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Calle Principal 123" />
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Latitud</label>
+                  <input type="text" placeholder="6.123456" value={mapPosition?.lat || ""} onChange={e => {
+                      const val = e.target.value.replace(',', '.');
+                      if (val === "" || val === "-") {
+                          setMapPosition(prev => ({ lat: val, lng: prev?.lng || 0 }));
+                      } else {
+                          const parsed = parseFloat(val);
+                          if (!isNaN(parsed)) setMapPosition(prev => ({ lat: parsed, lng: prev?.lng || 0 }));
+                          else setMapPosition(prev => ({ lat: val, lng: prev?.lng || 0 }));
+                      }
+                  }} className="w-full border border-slate-300 rounded-lg py-1.5 px-3 outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Longitud</label>
+                  <input type="text" placeholder="-75.123456" value={mapPosition?.lng || ""} onChange={e => {
+                      const val = e.target.value.replace(',', '.');
+                      if (val === "" || val === "-") {
+                          setMapPosition(prev => ({ lat: prev?.lat || 0, lng: val }));
+                      } else {
+                          const parsed = parseFloat(val);
+                          if (!isNaN(parsed)) setMapPosition(prev => ({ lat: prev?.lat || 0, lng: parsed }));
+                          else setMapPosition(prev => ({ lat: prev?.lat || 0, lng: val }));
+                      }
+                  }} className="w-full border border-slate-300 rounded-lg py-1.5 px-3 outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
 
               <div className="h-40 w-full rounded-xl overflow-hidden border border-slate-300 z-0">
                   <MapContainer center={mapPosition || [4.6097, -74.0817]} zoom={mapPosition ? 15 : 5} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }}>

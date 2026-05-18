@@ -30,8 +30,8 @@ class KPIAggregator:
         total_sales_value = sales_query.aggregate(Sum('total'))['total__sum'] or 0
         total_stock_qty = inventory_query.aggregate(Sum('quantity'))['quantity__sum'] or 0
         
-        # Products at risk (Simple heuristic: stock < min_stock)
-        products_at_risk = inventory_query.filter(quantity__lt=F('min_stock')).count()
+        # Products at risk (Simple heuristic: stock <= min_stock)
+        products_at_risk = inventory_query.filter(quantity__lte=F('min_stock')).count()
         
         # Inventory Turnover (Simplified: Sales Qty / Avg Stock)
         sales_qty = SaleItem.objects.filter(sale__in=sales_query).aggregate(Sum('quantity'))['quantity__sum'] or 0
@@ -123,7 +123,7 @@ class AIOrchestrator:
     """
     Handles AI prediction lifecycle, caching, and background pre-computation.
     """
-    CACHE_TTL_DAYS = 1
+    CACHE_TTL_MINUTES = 10
 
     @classmethod
     def get_predictions(cls, company, branch=None, category_id=None, start_date=None, end_date=None, force_refresh=False):
@@ -161,7 +161,7 @@ class AIOrchestrator:
                 cache_type='PREDICTIONS',
                 defaults={
                     'data': result['data'],
-                    'expire_at': timezone.now() + datetime.timedelta(days=cls.CACHE_TTL_DAYS)
+                    'expire_at': timezone.now() + datetime.timedelta(minutes=cls.CACHE_TTL_MINUTES)
                 }
             )
             return result['data']

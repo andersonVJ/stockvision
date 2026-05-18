@@ -147,9 +147,9 @@ class ProductViewSet(BaseInventoryViewSet):
         three_months_ago = datetime.now() - relativedelta(months=3)
         
         for inv in inv_qs:
-            # Umbral mínimo absoluto de 10 uds. Evita falsos positivos
-            # en productos con miles de unidades cuyo min_stock está mal configurado.
-            if 0 < inv.quantity < 10:
+            # Respetar el min_stock configurado por el usuario. 
+            # Si la cantidad es menor o igual al mínimo, se genera la alerta.
+            if inv.quantity <= inv.min_stock:
                 bajo_stock.append(InventorySerializer(inv).data)
                 
             # Verifica salidas
@@ -218,7 +218,8 @@ class InventoryViewSet(BaseInventoryViewSet):
         # Custom filtering for objects below min_stock
         alerts = []
         for inventory in queryset:
-            if inventory.quantity < inventory.min_stock:
+            # Incluir casos donde la cantidad llega exactamente al mínimo
+            if inventory.quantity <= inventory.min_stock:
                 alerts.append(inventory)
         
         serializer = self.get_serializer(alerts, many=True)
@@ -227,6 +228,22 @@ class InventoryViewSet(BaseInventoryViewSet):
 class StockMovementViewSet(BaseInventoryViewSet):
     queryset = StockMovement.objects.all()
     serializer_class = StockMovementSerializer
+    
+    def get_queryset(self):
+        # Order by date descending (most recent first)
+        qs = super().get_queryset().order_by('-date')
+        
+        # Filtering by year and month
+        year = self.request.query_params.get('year')
+        month = self.request.query_params.get('month')
+        
+        if year:
+            qs = qs.filter(date__year=year)
+        if month:
+            qs = qs.filter(date__month=month)
+            
+        return qs
+
     
     def perform_create(self, serializer):
         company_id = self.request.data.get('company')
@@ -263,8 +280,16 @@ class OrderViewSet(BaseInventoryViewSet):
     serializer_class = OrderSerializer
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        return qs.exclude(provider__tipo='TIENDA_MARCA')
+        qs = super().get_queryset().exclude(provider__tipo='TIENDA_MARCA')
+        user = self.request.user
+        
+        # Managers have total visibility
+        is_manager = user.is_superuser or user.is_staff or getattr(user, 'role', '') in ['ADMIN', 'JEFE_INVENTARIO']
+        
+        if not is_manager and getattr(user, 'branch', None):
+            qs = qs.filter(branch=user.branch)
+            
+        return qs
 
     def perform_create(self, serializer):
         company = self.request.user.company
@@ -397,9 +422,30 @@ class SaleViewSet(BaseInventoryViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        user = self.request.user
+        
+        # Superusers and staff have total visibility. Managers too.
+        is_manager = user.is_superuser or user.is_staff or getattr(user, 'role', '') in ['ADMIN', 'JEFE_INVENTARIO']
+        
+        if not is_manager and getattr(user, 'branch', None):
+            qs = qs.filter(branch=user.branch)
+
         client_doc = self.request.query_params.get('client_document')
         if client_doc:
             qs = qs.filter(client__id_document=client_doc)
+
+        # Filters for performance optimization (Requested by user)
+        year = self.request.query_params.get('year')
+        month = self.request.query_params.get('month')
+        
+        if year and month:
+            qs = qs.filter(date__year=year, date__month=month)
+        elif not year and not month and not client_doc:
+            # Default to current month if no filter is provided to avoid heavy load
+            from django.utils import timezone
+            now = timezone.now()
+            qs = qs.filter(date__year=now.year, date__month=now.month)
+            
         return qs
 
     def perform_create(self, serializer):
@@ -443,6 +489,121 @@ class SaleViewSet(BaseInventoryViewSet):
         
         from .services import InventoryService
         InventoryService.process_sale(sale, items_data, user, branch)
+        
+        # Enviar correo automáticamente si es factura electrónica y el cliente tiene correo
+        if invoice_type == 'ELECTRONICA' and client and client.email:
+            try:
+                self.send_invoice_email_helper(sale, client.email)
+            except Exception as e:
+                print("Error al enviar la factura automática:", e)
+
+    def send_invoice_email_helper(self, sale, email):
+        from django.core.mail import EmailMultiAlternatives
+        from django.conf import settings
+        from django.utils import timezone
+        
+        # Formatear moneda (COP)
+        def fmt(val):
+            return "{:,.0f}".format(float(val)).replace(',', '.')
+
+        items_html = "".join([
+            f"""
+            <tr>
+                <td style="padding: 16px 0; border-bottom: 1px solid #f3f4f6;">
+                    <p style="margin: 0; font-size: 14px; font-weight: 500; color: #111827;">{item.product.name}</p>
+                    <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">SKU: {item.product.sku}</p>
+                </td>
+                <td style="padding: 16px 0; border-bottom: 1px solid #f3f4f6; text-align: center; font-size: 14px; color: #374151;">
+                    {item.quantity}
+                </td>
+                <td style="padding: 16px 0; border-bottom: 1px solid #f3f4f6; text-align: right; font-size: 14px; font-weight: 500; color: #111827;">
+                    ${fmt(item.price_at_sale * item.quantity)}
+                </td>
+            </tr>
+            """ for item in sale.items.all()
+        ])
+        
+        subject = f"Tu Factura #{sale.id} - StockVision"
+        
+        # Mensaje en Texto Plano (Fallback)
+        text_content = f"Factura #{sale.id} - StockVision\nTotal: ${fmt(sale.total)}"
+        
+        # Mensaje en HTML
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f9fafb; margin: 0; padding: 40px 0; color: #374151;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); overflow: hidden;">
+                
+                <!-- Header -->
+                <div style="padding: 40px 40px 20px 40px; border-bottom: 1px solid #f3f4f6; text-align: center;">
+                    <!-- Logo HTML (CSS Puro para evitar bloqueos) -->
+                    <div style="text-align: center; margin-bottom: 15px; height: 40px;">
+                        <div style="display: inline-block; width: 10px; height: 24px; background-color: #1e3a5f; border-radius: 6px; margin: 0 3px; vertical-align: bottom;"></div>
+                        <div style="display: inline-block; width: 10px; height: 32px; background-color: #38bdf8; border-radius: 6px; margin: 0 3px; vertical-align: bottom;"></div>
+                        <div style="display: inline-block; width: 10px; height: 40px; background-color: #84cc4c; border-radius: 6px; margin: 0 3px; vertical-align: bottom;"></div>
+                    </div>
+                    <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #111827; letter-spacing: 1px;">STOCKVISION</h1>
+                    <p style="margin: 5px 0 0 0; font-size: 14px; color: #6b7280;">Factura Electrónica</p>
+                </div>
+                
+                <!-- Detalles Generales -->
+                <div style="padding: 30px 40px;">
+                    <table style="width: 100%; margin-bottom: 30px; border-collapse: collapse;">
+                        <tr>
+                            <td style="vertical-align: top; width: 50%;">
+                                <p style="margin: 0; font-size: 12px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em;">Facturado a</p>
+                                <p style="margin: 5px 0 0 0; font-size: 16px; font-weight: 600; color: #111827;">{sale.client.name if sale.client else 'Consumidor Final'}</p>
+                                <p style="margin: 2px 0 0 0; font-size: 14px; color: #6b7280;">CC/NIT: {sale.client.id_document if sale.client else 'N/A'}</p>
+                            </td>
+                            <td style="vertical-align: top; width: 50%; text-align: right;">
+                                <p style="margin: 0; font-size: 12px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em;">Detalles</p>
+                                <p style="margin: 5px 0 0 0; font-size: 14px; color: #111827;"><strong>Factura:</strong> #{str(sale.id).zfill(6)}</p>
+                                <p style="margin: 2px 0 0 0; font-size: 14px; color: #6b7280;"><strong>Fecha:</strong> {sale.date.strftime('%d/%m/%Y')}</p>
+                                <p style="margin: 2px 0 0 0; font-size: 14px; color: #6b7280;"><strong>Sede:</strong> {sale.branch.name if sale.branch else 'Principal'}</p>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Items -->
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; padding: 12px 0; border-bottom: 2px solid #e5e7eb; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase;">Descripción</th>
+                                <th style="text-align: center; padding: 12px 0; border-bottom: 2px solid #e5e7eb; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; width: 15%;">Cant</th>
+                                <th style="text-align: right; padding: 12px 0; border-bottom: 2px solid #e5e7eb; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; width: 25%;">Importe</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {items_html}
+                        </tbody>
+                    </table>
+
+                    <!-- Totales -->
+                    <table style="width: 100%; border-collapse: collapse; border-top: 1px solid #e5e7eb;">
+                        <tr>
+                            <td style="padding-top: 20px; width: 50%;"></td>
+                            <td style="padding-top: 20px; width: 50%; text-align: right;">
+                                <p style="margin: 0; font-size: 14px; color: #6b7280;">Total a pagar</p>
+                                <p style="margin: 5px 0 0 0; font-size: 28px; font-weight: 700; color: #111827;">${fmt(sale.total)}</p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <!-- Footer -->
+                <div style="background-color: #f9fafb; padding: 20px 40px; text-align: center; border-top: 1px solid #f3f4f6;">
+                    <p style="margin: 0; font-size: 13px; color: #6b7280;">Gracias por elegir <strong>StockVision</strong>.</p>
+                    <p style="margin: 5px 0 0 0; font-size: 12px; color: #9ca3af;">Si tienes alguna duda sobre esta factura, contáctanos a soporte@stockvision.site</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        msg = EmailMultiAlternatives(subject, text_content, settings.DEFAULT_FROM_EMAIL, [email])
+        msg.attach_alternative(html_content, "text/html")
+        msg.send()
 
     @action(detail=True, methods=['post'])
     def send_email(self, request, pk=None):
@@ -453,38 +614,11 @@ class SaleViewSet(BaseInventoryViewSet):
             return Response({"error": "No se proporcionó un correo electrónico."}, status=400)
             
         try:
-            items_text = "\n".join([f"- {item.product.name}: {item.quantity} x ${item.price_at_sale}" for item in sale.items.all()])
-            
-            message = f"""
-            Factura #{sale.id} - StockVision
-            
-            Sede: {sale.branch.name}
-            Fecha: {sale.date.strftime('%d/%m/%Y %H:%M')}
-            Cliente: {sale.client.name if sale.client else 'N/A'}
-            Documento: {sale.client.id_document if sale.client else 'N/A'}
-            
-            Detalle de productos:
-            {items_text}
-            
-            TOTAL: ${sale.total}
-            
-            Gracias por su compra.
-            StockVision
-            """
-            
-            from django.core.mail import send_mail
-            from django.conf import settings
-            
-            send_mail(
-                subject=f"Tu Factura #{sale.id} - StockVision",
-                message=message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[email],
-                fail_silently=False,
-            )
-            
+            self.send_invoice_email_helper(sale, email)
             return Response({"message": f"Factura enviada correctamente a {email}"})
         except Exception as e:
+            import traceback
+            print(traceback.format_exc())
             return Response({"error": f"Error al enviar correo: {str(e)}"}, status=500)
 
 class InventoryEntryViewSet(BaseInventoryViewSet):

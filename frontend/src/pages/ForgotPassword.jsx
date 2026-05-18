@@ -26,9 +26,15 @@ export default function ForgotPassword() {
 
       setSuccess(true);
 
-    } catch {
+    } catch (err) {
 
-      setMessage("No existe una cuenta con ese correo");
+      if (err.response && err.response.status === 429) {
+        setMessage(err.response.data.error || "No tienes más intentos. Por favor, prueba más tarde.");
+      } else if (err.response && err.response.status === 404) {
+        setMessage(err.response.data.error || "No existe un usuario/empleado con ese correo.");
+      } else {
+        setMessage("Ha ocurrido un error inesperado.");
+      }
 
     } finally {
 
@@ -110,7 +116,7 @@ export default function ForgotPassword() {
             </form>
 
             {message && (
-              <div className="mt-4 text-center text-sm text-gray-600">
+              <div className="mt-4 text-center text-sm font-semibold text-red-600 bg-red-50 p-3 rounded-lg border border-red-100">
                 {message}
               </div>
             )}

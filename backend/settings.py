@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     
     # Dashboard & IA
     'analytics',
+    'anymail',
 ]
 
 
@@ -150,11 +151,18 @@ SIMPLE_JWT = {
 CORS_ALLOW_ALL_ORIGINS = True
 
 
-# EMAIL CONFIG
+# EMAIL CONFIG (MAILTRAP)
+ANYMAIL = {
+    "MAILTRAP_API_TOKEN": "608f3081446736f6328600e46f24eb7a",
+}
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = "anymail.backends.mailtrap.EmailBackend"
+DEFAULT_FROM_EMAIL = "Correo StockVision <Correo@stockvision.site>"
 
-DEFAULT_FROM_EMAIL = 'StockVision <tucorreo@gmail.com>'
+# EMAIL CONFIG (RESEND - Anterior)
+# EMAIL_BACKEND = 'core.email_backends.ResendEmailBackend'
+# RESEND_API_KEY = 're_4axYBdXh_JnV5NYhVkiBjV7dBmmd8Gc8R'
+# DEFAULT_FROM_EMAIL = 'StockVision <onboarding@resend.dev>'
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

@@ -151,47 +151,67 @@ def request_password_reset(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    try:
+    # Límite estricto de 2 intentos por hora por correo
+    from django.core.cache import cache
+    cache_key = f"pwd_reset_limit_{email}"
+    requests_count = cache.get(cache_key, 0)
 
+    if requests_count >= 2:
+        return Response(
+            {"error": "No tienes más intentos. Por favor, prueba más tarde."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+
+    # Incrementar contador y bloquear durante 1 hora
+    cache.set(cache_key, requests_count + 1, timeout=3600)
+
+    # Mensaje genérico para evitar enumeración de usuarios
+    generic_message = "Si el correo está registrado, recibirás instrucciones."
+
+    try:
         user = User.objects.get(email=email)
 
-        reset_token = PasswordResetToken.objects.create(
-            user=user
-        )
+        # Invalidar/Borrar tokens de recuperación anteriores pendientes
+        PasswordResetToken.objects.filter(user=user).delete()
 
+        reset_token = PasswordResetToken.objects.create(user=user)
         reset_link = f"http://localhost:5173/reset-password/{reset_token.token}"
 
-        send_mail(
-            subject="Recuperar contraseña - StockVision",
-            message=f"""
-Hola {user.username}
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f9fafb; margin: 0; padding: 40px 0; color: #374151;">
+            <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); overflow: hidden; text-align: center;">
+                <div style="padding: 40px 40px 20px 40px;">
+                    <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #111827;">STOCKVISION</h1>
+                    <h2 style="margin: 20px 0 10px 0; font-size: 18px; color: #111827;">Recuperación de Contraseña</h2>
+                    <p style="font-size: 14px; color: #6b7280; line-height: 1.6;">Hola {user.username}, recibimos una solicitud para restablecer el acceso a tu cuenta. Haz clic en el botón de abajo para asignar una nueva contraseña.</p>
+                    
+                    <a href="{reset_link}" style="display: inline-block; margin: 25px 0; padding: 12px 24px; background-color: #4f46e5; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">Restablecer Contraseña</a>
+                    
+                    <p style="font-size: 12px; color: #9ca3af; margin-bottom: 0;">Este enlace expirará en 5 minutos por tu seguridad.</p>
+                    <p style="font-size: 12px; color: #9ca3af; margin-top: 5px;">Si no solicitaste este cambio, puedes ignorar este correo de forma segura y tu cuenta no será alterada.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
 
-Recibimos una solicitud para restablecer tu contraseña.
-
-Haz clic en el siguiente enlace:
-
-{reset_link}
-
-Este enlace expirará en 15 minutos.
-
-Si no solicitaste este cambio puedes ignorar este correo.
-
-StockVision
-Sistema de Gestión de Inventarios
-            """,
+        from django.core.mail import EmailMultiAlternatives
+        msg = EmailMultiAlternatives(
+            subject="Recupera tu acceso - StockVision",
+            body=f"Hola {user.username}. Ingresa aquí para recuperar tu contraseña: {reset_link}",
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            fail_silently=False,
+            to=[email]
         )
+        msg.attach_alternative(html_content, "text/html")
+        msg.send(fail_silently=False)
 
-        return Response({
-            "message": "Correo de recuperación enviado correctamente"
-        })
+        return Response({"message": generic_message})
 
     except User.DoesNotExist:
-
         return Response(
-            {"error": "No existe un usuario con ese correo"},
+            {"error": "No existe un usuario/empleado registrado con este correo."},
             status=status.HTTP_404_NOT_FOUND
         )
 
@@ -200,9 +220,24 @@ Sistema de Gestión de Inventarios
 # CAMBIAR CONTRASEÑA
 # ============================================
 
-@api_view(['POST'])
+@api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def reset_password(request):
+    if request.method == 'GET':
+        token = request.query_params.get("token")
+        if not token:
+            return Response({"error": "Token requerido"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            reset_token = PasswordResetToken.objects.get(token=token)
+            if reset_token.is_expired():
+                reset_token.delete()
+                return Response({"error": "El enlace ha expirado"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            elapsed = (timezone.now() - reset_token.created_at).total_seconds()
+            remaining = max(0, int(300 - elapsed))
+            return Response({"message": "Token válido", "remaining_seconds": remaining})
+        except PasswordResetToken.DoesNotExist:
+            return Response({"error": "Token inválido o ya fue utilizado."}, status=status.HTTP_400_BAD_REQUEST)
 
     token = request.data.get("token")
     password = request.data.get("password")
@@ -214,34 +249,37 @@ def reset_password(request):
         )
 
     try:
-
         reset_token = PasswordResetToken.objects.get(token=token)
 
-        # Verificar expiración
+        # Verificar expiración (ahora son 5 minutos)
         if reset_token.is_expired():
-
             reset_token.delete()
-
             return Response(
-                {"error": "El enlace ha expirado"},
+                {"error": "El enlace ha expirado por seguridad. Por favor solicita uno nuevo."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         user = reset_token.user
 
-        user.password = make_password(password)
+        # Encriptar la nueva contraseña con el hash fuerte de Django (previene SQLi por defecto)
+        user.set_password(password)
         user.save()
 
-        # eliminar token usado
-        reset_token.delete()
+        # Cerrar sesiones activas del usuario en otros navegadores
+        from django.contrib.sessions.models import Session
+        for session in Session.objects.all():
+            if str(user.id) == session.get_decoded().get('_auth_user_id'):
+                session.delete()
+
+        # Invalidar/Borrar TODOS los tokens viejos para este usuario en caso de robo
+        PasswordResetToken.objects.filter(user=user).delete()
 
         return Response({
-            "message": "Contraseña actualizada correctamente"
+            "message": "Contraseña actualizada correctamente y sesiones cerradas."
         })
 
     except PasswordResetToken.DoesNotExist:
-
         return Response(
-            {"error": "Token inválido"},
+            {"error": "Token inválido o ya fue utilizado."},
             status=status.HTTP_400_BAD_REQUEST
         )

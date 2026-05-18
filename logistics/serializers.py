@@ -9,10 +9,15 @@ class RouteStopSerializer(serializers.ModelSerializer):
     total_venta = serializers.ReadOnlyField(source='venta.total')
     estado_entrega_display = serializers.ReadOnlyField(source='get_estado_entrega_display')
 
+    branch_lat = serializers.ReadOnlyField(source='venta.branch.latitud')
+    branch_lng = serializers.ReadOnlyField(source='venta.branch.longitud')
+    branch_address = serializers.ReadOnlyField(source='venta.branch.address')
+
     class Meta:
         model = RouteStop
         fields = [
             'id', 'ruta', 'venta', 'venta_id', 'branch_name',
+            'branch_lat', 'branch_lng', 'branch_address',
             'client_name', 'total_venta', 'orden_entrega',
             'estado_entrega', 'estado_entrega_display', 'notas'
         ]
@@ -28,6 +33,14 @@ class DeliveryRouteSerializer(serializers.ModelSerializer):
     estado_display = serializers.ReadOnlyField(source='get_estado_display')
     tipo_display = serializers.ReadOnlyField(source='get_tipo_display')
     branch_name = serializers.ReadOnlyField(source='branch.name')
+    branch_lat = serializers.ReadOnlyField(source='branch.latitud')
+    branch_lng = serializers.ReadOnlyField(source='branch.longitud')
+    branch_address = serializers.ReadOnlyField(source='branch.address')
+    
+    supplier_lat = serializers.SerializerMethodField()
+    supplier_lng = serializers.SerializerMethodField()
+    supplier_address = serializers.SerializerMethodField()
+
     total_paradas = serializers.SerializerMethodField()
     paradas_entregadas = serializers.SerializerMethodField()
     internal_order_id = serializers.ReadOnlyField(source='internal_order.id')
@@ -35,8 +48,9 @@ class DeliveryRouteSerializer(serializers.ModelSerializer):
     class Meta:
         model = DeliveryRoute
         fields = [
-            'id', 'company', 'branch', 'branch_name',
+            'id', 'company', 'branch', 'branch_name', 'branch_lat', 'branch_lng', 'branch_address',
             'purchase_order', 'internal_order', 'internal_order_id', 'tipo', 'tipo_display', 'origin_supplier',
+            'supplier_lat', 'supplier_lng', 'supplier_address',
             'fecha', 'zona', 'transportador', 'estado', 'estado_display', 'notas',
             'paradas', 'total_paradas', 'paradas_entregadas',
             'created_at', 'updated_at'
@@ -48,6 +62,33 @@ class DeliveryRouteSerializer(serializers.ModelSerializer):
 
     def get_paradas_entregadas(self, obj):
         return obj.paradas.filter(estado_entrega='ENTREGADO').count()
+
+    def get_supplier_lat(self, obj):
+        if obj.purchase_order and obj.purchase_order.proveedor:
+            return obj.purchase_order.proveedor.latitud
+        if obj.tipo == 'INTERNO':
+            from companies.models import Branch
+            matrix = Branch.objects.filter(company=obj.company, name__icontains='Matriz').first()
+            if matrix and matrix.latitud: return matrix.latitud
+            return obj.company.latitud
+        return None
+
+    def get_supplier_lng(self, obj):
+        if obj.purchase_order and obj.purchase_order.proveedor:
+            return obj.purchase_order.proveedor.longitud
+        if obj.tipo == 'INTERNO':
+            from companies.models import Branch
+            matrix = Branch.objects.filter(company=obj.company, name__icontains='Matriz').first()
+            if matrix and matrix.longitud: return matrix.longitud
+            return obj.company.longitud
+        return None
+
+    def get_supplier_address(self, obj):
+        if obj.purchase_order and obj.purchase_order.proveedor:
+            return obj.purchase_order.proveedor.address
+        if obj.tipo == 'INTERNO':
+            return "Sede Matriz / Almacén Central"
+        return None
 
 
 class PurchaseOrderItemSerializer(serializers.ModelSerializer):

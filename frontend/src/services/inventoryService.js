@@ -60,10 +60,13 @@ export const getLowStockAlerts = async () => {
     return res.data;
 };
 
-export const getMovements = async () => {
-    const res = await axios.get("http://127.0.0.1:8000/api/inventory/movements/", getAuthHeaders());
+export const getMovements = async (filters = {}) => {
+    const params = new URLSearchParams(filters).toString();
+    const url = `http://127.0.0.1:8000/api/inventory/movements/${params ? `?${params}` : ''}`;
+    const res = await axios.get(url, getAuthHeaders());
     return res.data;
 };
+
 
 export const createMovement = async (data) => {
     const res = await axios.post("http://127.0.0.1:8000/api/inventory/movements/", data, getAuthHeaders());
@@ -95,8 +98,10 @@ export const deleteBranch = async (id) => {
     return res.data;
 };
 
-export const getSales = async () => {
-    const res = await axios.get("http://127.0.0.1:8000/api/inventory/sales/", getAuthHeaders());
+export const getSales = async (filters = {}) => {
+    const params = new URLSearchParams(filters).toString();
+    const url = `http://127.0.0.1:8000/api/inventory/sales/${params ? `?${params}` : ''}`;
+    const res = await axios.get(url, getAuthHeaders());
     return res.data;
 };
 

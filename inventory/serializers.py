@@ -67,21 +67,27 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
-    created_by_name = serializers.ReadOnlyField(source='created_by.first_name')
-    approved_by_name = serializers.ReadOnlyField(source='approved_by.first_name')
-    branch_name = serializers.ReadOnlyField(source='branch.name')
-    branch_lat = serializers.ReadOnlyField(source='branch.latitud')
-    branch_lng = serializers.ReadOnlyField(source='branch.longitud')
-    provider_name = serializers.ReadOnlyField(source='provider.name')
-    provider_lat = serializers.ReadOnlyField(source='provider.latitud')
-    provider_lng = serializers.ReadOnlyField(source='provider.longitud')
-    company_lat = serializers.ReadOnlyField(source='company.latitud')
-    company_lng = serializers.ReadOnlyField(source='company.longitud')
+    created_by_name = serializers.SerializerMethodField()
+    approved_by_name = serializers.SerializerMethodField()
+    branch_name = serializers.ReadOnlyField(source='branch.name', default='N/A')
+    branch_lat = serializers.ReadOnlyField(source='branch.latitud', default=0)
+    branch_lng = serializers.ReadOnlyField(source='branch.longitud', default=0)
+    provider_name = serializers.ReadOnlyField(source='provider.name', default='N/A')
+    provider_lat = serializers.ReadOnlyField(source='provider.latitud', default=0)
+    provider_lng = serializers.ReadOnlyField(source='provider.longitud', default=0)
+    company_lat = serializers.ReadOnlyField(source='company.latitud', default=0)
+    company_lng = serializers.ReadOnlyField(source='company.longitud', default=0)
     
     class Meta:
         model = Order
         fields = '__all__'
         read_only_fields = ('company', 'created_by', 'approved_by', 'status')
+
+    def get_created_by_name(self, obj):
+        return obj.created_by.get_full_name() or obj.created_by.username if obj.created_by else "N/A"
+
+    def get_approved_by_name(self, obj):
+        return obj.approved_by.get_full_name() or obj.approved_by.username if obj.approved_by else "Pendiente"
 
 class SaleItemSerializer(serializers.ModelSerializer):
     product_name = serializers.ReadOnlyField(source='product.name')
@@ -92,23 +98,35 @@ class SaleItemSerializer(serializers.ModelSerializer):
 
 class SaleSerializer(serializers.ModelSerializer):
     items = SaleItemSerializer(many=True, read_only=True)
-    user_name = serializers.ReadOnlyField(source='user.first_name')
-    branch_name = serializers.ReadOnlyField(source='branch.name')
-    client_document = serializers.ReadOnlyField(source='client.id_document')
-    client_name = serializers.ReadOnlyField(source='client.name')
+    user_name = serializers.SerializerMethodField()
+    branch_name = serializers.ReadOnlyField(source='branch.name', default='N/A')
+    client_document = serializers.SerializerMethodField()
+    client_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Sale
         fields = '__all__'
         read_only_fields = ('branch', 'user', 'date', 'status', 'total')
 
+    def get_user_name(self, obj):
+        return obj.user.get_full_name() or obj.user.username if obj.user else "N/A"
+
+    def get_client_document(self, obj):
+        return obj.client.id_document if obj.client else "N/A"
+
+    def get_client_name(self, obj):
+        return obj.client.name if obj.client else "Consumidor Final"
+
 class InventoryEntrySerializer(serializers.ModelSerializer):
     product_name = serializers.ReadOnlyField(source='product.name')
     provider_name = serializers.ReadOnlyField(source='provider.name')
-    user_name = serializers.ReadOnlyField(source='user.first_name')
+    user_name = serializers.SerializerMethodField()
     branch_name = serializers.ReadOnlyField(source='branch.name')
 
     class Meta:
         model = InventoryEntry
         fields = '__all__'
         read_only_fields = ('company', 'user', 'date')
+
+    def get_user_name(self, obj):
+        return obj.user.get_full_name() or obj.user.username if obj.user else "N/A"

@@ -7,18 +7,21 @@ import {
 import Sidebar from "../components/Sidebar";
 import Swal from "sweetalert2";
 import axios from "axios";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { getProviders } from "../services/inventoryService";
+import { getProviders, updateBranch, getBranches } from "../services/inventoryService";
 
-// Fix Leaflet default icon paths for bundlers
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
 });
+L.Marker.prototype.options.icon = DefaultIcon;
 
 // Custom colored icons per stop state
 const getStopIcon = (estado) => {
@@ -92,6 +95,7 @@ export default function Logistica() {
         zona: "",
         transportador: "",
     });
+    const [allBranches, setAllBranches] = useState([]);
 
     const fetchRutas = useCallback(async () => {
         setLoading(true);
@@ -105,13 +109,20 @@ export default function Logistica() {
 
     useEffect(() => { 
         fetchRutas(); 
-        const fetchProviders = async () => {
+        const fetchProvidersData = async () => {
             try {
                 const data = await getProviders();
                 setProviders(data);
             } catch (err) { console.error("Error fetching providers", err); }
         };
-        fetchProviders();
+        fetchProvidersData();
+        const fetchAllBranches = async () => {
+            try {
+                const data = await getBranches();
+                setAllBranches(data);
+            } catch (err) { console.error("Error fetching branches", err); }
+        };
+        fetchAllBranches();
     }, [fetchRutas]);
 
     const handleGenerarRuta = async () => {
@@ -149,32 +160,42 @@ export default function Logistica() {
 
     const rutasFiltradas = filtroEstado === "TODOS" ? rutas : rutas.filter(r => r.estado === filtroEstado);
 
-    // Build map markers from selected route
-    // Since we don't have geocoded coordinates, we simulate spread positions
-    // around the branch address region (Colombia lat/lng).
-    // In a real scenario, the Branch model would have lat/lng fields.
-    const mapMarkers = selectedRuta ? selectedRuta.paradas.map((p, i) => {
-        const angle = (2 * Math.PI * i) / Math.max(selectedRuta.paradas.length, 1);
-        const radius = 0.05 + 0.03 * Math.floor(i / 6);
-        return {
-            lat: DEFAULT_CENTER[0] + Math.sin(angle) * radius,
-            lng: DEFAULT_CENTER[1] + Math.cos(angle) * radius,
+    const mapMarkers = selectedRuta ? selectedRuta.paradas
+        .filter(p => p.branch_lat && p.branch_lng)
+        .map((p, i) => ({
+            lat: parseFloat(p.branch_lat),
+            lng: parseFloat(p.branch_lng),
             parada: p,
             label: `#${p.orden_entrega}`,
-        };
-    }) : [];
+        })) : [];
 
-    const branchMarker = selectedRuta ? {
-        lat: DEFAULT_CENTER[0],
-        lng: DEFAULT_CENTER[1],
+    const branchMarker = (selectedRuta && selectedRuta.branch_lat) ? {
+        lat: parseFloat(selectedRuta.branch_lat),
+        lng: parseFloat(selectedRuta.branch_lng),
         name: selectedRuta.branch_name || "Sede principal",
+        address: selectedRuta.branch_address
     } : null;
 
-    const supplierMarker = (selectedRuta && selectedRuta.tipo === "ENTRADA") ? {
-        lat: DEFAULT_CENTER[0] + 0.04,
-        lng: DEFAULT_CENTER[1] + 0.04,
+    const supplierMarker = (selectedRuta && selectedRuta.supplier_lat) ? {
+        lat: parseFloat(selectedRuta.supplier_lat),
+        lng: parseFloat(selectedRuta.supplier_lng),
         name: selectedRuta.origin_supplier || "Proveedor",
+        address: selectedRuta.supplier_address,
+        id: selectedRuta.purchase_order_provider_id || null // Add ID if available to avoid duplication
     } : null;
+
+    // Build polyline points
+    const routePolyline = [];
+    if (supplierMarker && branchMarker) {
+        routePolyline.push([supplierMarker.lat, supplierMarker.lng]);
+        routePolyline.push([branchMarker.lat, branchMarker.lng]);
+    } else if (branchMarker && mapMarkers.length > 0) {
+        // Start from branch to all stops
+        mapMarkers.forEach(m => {
+            routePolyline.push([branchMarker.lat, branchMarker.lng]);
+            routePolyline.push([m.lat, m.lng]);
+        });
+    }
 
     return (
         <div className="flex min-h-screen bg-slate-50 font-sans">
@@ -316,43 +337,52 @@ export default function Logistica() {
                                     supplierMarker ? { lat: supplierMarker.lat, lng: supplierMarker.lng } : null
                                 ].filter(Boolean)} />
 
-                                {/* Branch marker */}
-                                {branchMarker && (
-                                    <Marker position={[branchMarker.lat, branchMarker.lng]} icon={branchIcon}>
-                                        <Popup>
-                                            <div className="font-semibold text-blue-700 flex items-center gap-1">
-                                                <Building2 className="w-3.5 h-3.5" /> {branchMarker.name}
-                                            </div>
-                                            <p className="text-xs text-slate-500 mt-1">Sede destino de la ruta</p>
-                                        </Popup>
-                                    </Marker>
-                                )}
-
-                                {/* Default Supplier marker (For old ENTRADA without coords) */}
-                                {supplierMarker && (
-                                    <Marker position={[supplierMarker.lat, supplierMarker.lng]} icon={supplierIcon}>
-                                        <Popup>
-                                            <div className="font-semibold text-violet-700 flex items-center gap-1">
-                                                <ArrowDownCircle className="w-3.5 h-3.5" /> {supplierMarker.name}
-                                            </div>
-                                            <p className="text-xs text-slate-500 mt-1">Proveedor de origen</p>
-                                        </Popup>
-                                    </Marker>
-                                )}
+                                {/* ALL branches dynamically */}
+                                {allBranches.filter(b => b.latitud && b.longitud).map(b => {
+                                    const isActive = branchMarker && branchMarker.lat === parseFloat(b.latitud) && branchMarker.lng === parseFloat(b.longitud);
+                                    return (
+                                        <Marker key={`branch-${b.id}`} position={[parseFloat(b.latitud), parseFloat(b.longitud)]} icon={isActive ? branchIcon : DefaultIcon}>
+                                            <Popup>
+                                                <div className="font-semibold text-blue-700 flex items-center gap-1">
+                                                    <Building2 className="w-3.5 h-3.5" /> {b.name}
+                                                </div>
+                                                <p className="text-[10px] text-slate-500 mt-1 border-t pt-1 border-slate-200">
+                                                    Sede Registrada{isActive && " (Destino Activo)"}<br/>{b.address}
+                                                </p>
+                                            </Popup>
+                                        </Marker>
+                                    );
+                                })}
 
                                 {/* ALL providers dynamically with coordinates */}
-                                {providers.filter(p => p.latitud && p.longitud).map(p => (
-                                    <Marker key={`prov-${p.id}`} position={[parseFloat(p.latitud), parseFloat(p.longitud)]} icon={supplierIcon}>
-                                        <Popup>
-                                            <div className="font-semibold text-violet-700 flex items-center gap-1">
-                                                <Building2 className="w-3.5 h-3.5" /> {p.name}
-                                            </div>
-                                            <p className="text-[10px] text-slate-500 mt-1 border-t pt-1 border-slate-200">
-                                                Proveedor registrado<br/>{p.address}
-                                            </p>
-                                        </Popup>
-                                    </Marker>
-                                ))}
+                                {providers.filter(p => p.latitud && p.longitud).map(p => {
+                                    const isActive = supplierMarker && supplierMarker.lat === parseFloat(p.latitud) && supplierMarker.lng === parseFloat(p.longitud);
+                                    return (
+                                        <Marker key={`prov-${p.id}`} position={[parseFloat(p.latitud), parseFloat(p.longitud)]} icon={isActive ? supplierIcon : DefaultIcon}>
+                                            <Popup>
+                                                <div className="font-semibold text-violet-700 flex items-center gap-1">
+                                                    <ArrowDownCircle className="w-3.5 h-3.5" /> {p.name}
+                                                </div>
+                                                <p className="text-[10px] text-slate-500 mt-1 border-t pt-1 border-slate-200">
+                                                    Proveedor registrado{isActive && " (Origen Activo)"}<br/>{p.address}
+                                                </p>
+                                            </Popup>
+                                        </Marker>
+                                    );
+                                })}
+
+                                {/* Route Polyline */}
+                                {routePolyline.length > 0 && (
+                                    <Polyline 
+                                        positions={routePolyline} 
+                                        pathOptions={{ 
+                                            color: selectedRuta.tipo === 'ENTRADA' ? '#7c3aed' : selectedRuta.tipo === 'INTERNO' ? '#f97316' : '#2563eb', 
+                                            weight: 5,
+                                            opacity: 0.7,
+                                            lineJoin: 'round'
+                                        }} 
+                                    />
+                                )}
 
                                 {/* Stop markers */}
                                 {mapMarkers.map((m, i) => {

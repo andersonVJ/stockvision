@@ -4,6 +4,7 @@ import { getInventories, getProducts, createSale, getClientByDocument, getSalesB
 import FacturaImprimible from "../components/FacturaImprimible";
 import { showErrorAlert, showWarningAlert, showSuccessAlert } from "../utils/alerts";
 import { formatCurrency } from "../utils/currency";
+import { Receipt } from "lucide-react";
 
 export default function PuntoDeVenta() {
   const [user, setUser] = useState({});
@@ -179,6 +180,29 @@ export default function PuntoDeVenta() {
   const handlePrintReset = () => {
     setInvoiceData(null);
   };
+
+  if (user?.role === "ADMIN") {
+    return (
+      <div className="flex h-screen bg-slate-50 font-sans">
+        <Sidebar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center bg-white p-8 rounded-2xl shadow-sm border border-slate-200 max-w-md">
+            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Receipt size={32} />
+            </div>
+            <h2 className="text-xl font-bold text-slate-800 mb-2">Acceso Restringido</h2>
+            <p className="text-slate-500 mb-6">El perfil de Administrador no está habilitado para realizar ventas directas. Por favor, use un perfil de Vendedor o Cajero.</p>
+            <button 
+              onClick={() => window.history.back()}
+              className="px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors"
+            >
+              Volver
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex bg-slate-50 font-sans text-slate-800 h-screen overflow-hidden print:bg-white">

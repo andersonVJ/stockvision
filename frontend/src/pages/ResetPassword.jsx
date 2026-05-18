@@ -12,25 +12,37 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
-  const [time, setTime] = useState(900);
+  const [time, setTime] = useState(null);
+  const [isTokenValid, setIsTokenValid] = useState(true);
 
   useEffect(() => {
+    const validateToken = async () => {
+      try {
+        const response = await axios.get(`http://127.0.0.1:8000/api/companies/password-reset-confirm/?token=${token}`);
+        setTime(response.data.remaining_seconds);
+      } catch (err) {
+        setIsTokenValid(false);
+        setMessage("El enlace ha expirado o es inválido. Por favor, solicita uno nuevo.");
+      }
+    };
+    validateToken();
+  }, [token]);
 
+  useEffect(() => {
+    if (time === null || time <= 0) return;
     const interval = setInterval(() => {
-
       setTime((prev) => {
-        if (prev <= 0) {
+        if (prev <= 1) {
           clearInterval(interval);
+          setIsTokenValid(false);
+          setMessage("El enlace ha expirado. Por favor, solicita uno nuevo.");
           return 0;
         }
         return prev - 1;
       });
-
     }, 1000);
-
     return () => clearInterval(interval);
-
-  }, []);
+  }, [time]);
 
   // REDIRECCIÓN AUTOMÁTICA
   useEffect(() => {
@@ -116,43 +128,58 @@ export default function ResetPassword() {
               </div>
             </div>
 
-            {/* CONTADOR */}
-            <div className="text-center text-yellow-600 text-sm mb-4">
-              El enlace expira en
-              <span className="font-bold ml-1">
-                {minutes}:{seconds < 10 ? `0${seconds}` : seconds}
-              </span>
-            </div>
-
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-
-              <input
-                type="password"
-                placeholder="Nueva contraseña"
-                required
-                className="border border-gray-200 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"
-                onChange={(e) => setPassword(e.target.value)}
-              />
-
-              <button
-                disabled={loading}
-                className="bg-gradient-to-r from-blue-500 to-green-500 text-white p-3 rounded-lg font-semibold hover:scale-105 transition flex items-center justify-center gap-2"
-              >
-
-                {loading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Guardando...
-                  </>
-                ) : (
-                  "Cambiar contraseña"
+            {isTokenValid ? (
+              <>
+                {time !== null && (
+                  <div className="text-center text-yellow-600 text-sm mb-4">
+                    El enlace expira en
+                    <span className="font-bold ml-1">
+                      {minutes}:{seconds < 10 ? `0${seconds}` : seconds}
+                    </span>
+                  </div>
                 )}
 
-              </button>
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
-            </form>
+                  <input
+                    type="password"
+                    placeholder="Nueva contraseña"
+                    required
+                    className="border border-gray-200 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
 
-            {message && (
+                  <button
+                    disabled={loading}
+                    className="bg-gradient-to-r from-blue-500 to-green-500 text-white p-3 rounded-lg font-semibold hover:scale-105 transition flex items-center justify-center gap-2"
+                  >
+
+                    {loading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Guardando...
+                      </>
+                    ) : (
+                      "Cambiar contraseña"
+                    )}
+
+                  </button>
+
+                </form>
+              </>
+            ) : (
+              <div className="text-center bg-red-50 p-4 rounded-lg mt-4">
+                <p className="text-sm font-semibold text-red-600">{message}</p>
+                <button
+                  onClick={() => navigate("/")}
+                  className="mt-4 bg-slate-800 text-white px-4 py-2 rounded-lg hover:bg-slate-700 text-sm font-semibold"
+                >
+                  Volver al inicio
+                </button>
+              </div>
+            )}
+
+            {message && isTokenValid && (
               <div className="mt-4 text-center text-sm text-gray-600">
                 {message}
               </div>

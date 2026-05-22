@@ -44,6 +44,14 @@ class PredictionService:
                 product_ids
             )
 
+            if inv_df.empty:
+                model_logger.info("No active products found to predict. Returning empty results.")
+                return {
+                    "status": "success",
+                    "data": []
+                }
+
+
             # ==========================================
             # LOAD PROPHET
             # ==========================================

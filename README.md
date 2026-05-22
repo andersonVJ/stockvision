@@ -1,116 +1,131 @@
 # 🚀 StockVision
 
-StockVision es un __Sistema Inteligente de Gestión de Inventarios y Predicción Automática__, construido sobre una arquitectura moderna y robusta, separada en niveles de Backend (Django) y Frontend (React).
+StockVision es un **Sistema Inteligente de Gestión de Inventarios y Predicción Automática** diseñado para entornos corporativos modernos. Se basa en una arquitectura desacoplada con un backend robusto en **Django REST Framework** y un frontend dinámico en **React con Vite y Tailwind CSS**.
 
-Este sistema ha sido rigurosamente diseñado para proporcionar una plataforma corporativa multi-empresa y multi-rol. Facilita la administración centralizada de productos, la optimización de la rotación de inventarios y ofrece un panel operativo intuitivo y analítico para respaldar la toma de decisiones estratégicas.
-
----
-
-## 🛠️ Stack Tecnológico
-
-- __Backend:__
-    - Python 3 y Django
-    - Django REST Framework (DRF)
-    - `djangorestframework-simplejwt` (Autenticación segura mediante JSON Web Tokens)
-    - `django-cors-headers` (Soporte Multi-Origen CORS)
-    - Motor de Base de Datos: SQLite (Configuración inicial)
-- __Frontend:__
-    - React 18 y Vite
-    - Tailwind CSS v4 (Sistema de diseño utilitario)
-    - `react-router-dom` (Gestión de rutas)
-    - `lucide-react` (Sistema de iconografía)
-    - Axios (Cliente HTTP)
+Esta plataforma está lista para producción y está completamente optimizada para ofrecer aislamiento multi-empresa, gestión inteligente de stock con IA y un control operativo fluido de alta seguridad.
 
 ---
 
-## 🧑‍💻 Guía de Despliegue Local
+## 🛠️ Stack Tecnológico de Producción
 
-Siga cuidadosamente estos pasos para inicializar los servicios y ejecutar StockVision en su entorno de desarrollo local.
+### Backend (Servicios y Datos)
+* **Framework:** Python 3 + Django & Django REST Framework (DRF)
+* **Base de Datos:** **PostgreSQL** (Motor de base de datos relacional para producción y pruebas)
+* **Seguridad y JWT:** `djangorestframework-simplejwt` (Tokens de acceso y refresco seguros)
+* **Políticas CORS:** `django-cors-headers` (Integración multi-origen)
+* **Inteligencia Artificial:** Prophet & XGBoost (Modelos predictivos de demanda y sugerencias de compra automáticas)
 
-### 1. Inicialización del Backend (Django)
-Abra su terminal, navegue hasta el directorio raíz del proyecto y ejecute los siguientes comandos:
+### Frontend (Interfaz de Usuario)
+* **Framework:** React 18 + Vite (Aplicación Single Page - SPA)
+* **Estilizado (CSS):** Tailwind CSS v4 (Diseño responsivo y moderno)
+* **Iconografía:** `lucide-react`
+* **Cliente HTTP:** Axios (Comunicación asíncrona con la API)
 
+---
+
+## 🔑 Características Clave y Arquitectura
+
+> [!NOTE]
+> **Aislamiento Multitenant:**
+> El sistema implementa un riguroso aislamiento a nivel de base de datos. Cada empresa (`Company`) y sucursal (`Branch`) visualiza únicamente sus propios recursos. Los empleados regulares no pueden consultar datos de inventario o personal de empresas competidoras.
+
+### 👥 Control de Acceso Basado en Roles (RBAC)
+StockVision cuenta con un motor de autorización interno de 3 niveles:
+1. **ADMIN (Administrador Corporativo):** Acceso total para gestionar la empresa, dar de alta sedes, crear empleados y ver KPIs financieros globales.
+2. **JEFE_INVENTARIO:** Permisos para control físico de productos, movimientos de bodega, visualización de alertas y acceso a predicciones de IA.
+3. **EMPLEADO (Bodega/Ventas):** Funciones delimitadas a las operaciones cotidianas de facturación y movimientos de mercancía autorizados.
+
+### 🤖 Motor Predictivo de IA Integrado
+Nuestros modelos de Machine Learning (Prophet y XGBoost) analizan los históricos de ventas y el stock actual para:
+* Pronosticar tendencias mensuales de demanda de productos.
+* Generar sugerencias automáticas de abastecimiento preventivo (`auto_order`).
+* Disparar alertas inteligentes cuando el inventario cruza el umbral crítico (`min_stock`).
+
+### 🛡️ Protocolo de Seguridad Activa (Auto-Logout)
+Para proteger la integridad del inventario ante descuidos físicos en bodega o terminales de venta, el módulo `AutoLogout` monitorea continuamente la actividad del usuario. Ante **15 minutos de inactividad**, la sesión es invalidada de inmediato destruyendo los tokens JWT y redirigiendo al portal de autenticación.
+
+---
+
+## 🏗️ Guía de Despliegue y Configuración Local
+
+Sigue estos pasos para inicializar el proyecto en tu entorno local con PostgreSQL.
+
+### 1. Requisitos Previos
+* Python 3.10+ instalado.
+* Node.js 18+ instalado.
+* Servidor PostgreSQL activo.
+
+### 2. Configuración del Backend (Django)
+1. Abre tu terminal y ve a la raíz del proyecto.
+2. Crea y activa tu entorno virtual:
+   ```bash
+   python -m venv venv
+   # En Windows:
+   .\venv\Scripts\activate
+   # En Linux/macOS:
+   source venv/bin/activate
+   ```
+3. Instala todas las dependencias requeridas:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Configura las variables de conexión a PostgreSQL en [settings.py](file:///c:/Users/valen/OneDrive/Desktop/stockvision/backend/settings.py) (o mediante variables de entorno):
+   * `DB_NAME`: `mibasededatos`
+   * `DB_USER`: `django_user`
+   * `DB_PASSWORD`: `Admin123`
+   * `DB_HOST`: `localhost`
+   * `DB_PORT`: `5432`
+5. Ejecuta las migraciones y carga los datos de producción/semilla:
+   ```bash
+   # Aplicar migraciones
+   python manage.py migrate
+   
+   # Cargar el dump de base de datos migrado (UTF-8)
+   python manage.py loaddata datadump_utf8.json
+   ```
+6. Inicia el servidor de desarrollo:
+   ```bash
+   python manage.py runserver
+   ```
+   El backend estará disponible en `http://127.0.0.1:8000`.
+
+### 3. Configuración del Frontend (React)
+1. Abre una nueva terminal en el directorio `frontend/`.
+2. Instala las dependencias de Node:
+   ```bash
+   npm install
+   ```
+3. Inicia el servidor de desarrollo Vite:
+   ```bash
+   npm run dev
+   ```
+   La aplicación web estará disponible en `http://localhost:5173`.
+
+---
+
+## 🧪 Pruebas de Software e Integridad
+
+> [!IMPORTANT]
+> **Suite de Pruebas Integral:**
+> StockVision cuenta con **73 pruebas automatizadas** que validan la lógica de negocio, seguridad, integridad y el comportamiento del motor de IA en PostgreSQL.
+>
+> Para conocer el mapa completo de casos de prueba y estados, consulta el **[README de Pruebas](file:///c:/Users/valen/OneDrive/Desktop/stockvision/README_PRUEBAS.md)** y el reporte general en **[PRUEBAS.md](file:///c:/Users/valen/OneDrive/Desktop/stockvision/PRUEBAS.md)**.
+
+Para correr la suite de pruebas automatizadas localmente, ejecuta:
 ```bash
-# 1. Creación del entorno virtual (si no existe)
-python -m venv venv
-
-# 2. Activación del entorno virtual
-# Para sistemas Windows:
-.\venv\Scripts\activate
-# Para sistemas Linux/Mac:
-source venv/bin/activate
-
-# 3. Instalación de dependencias (DRF, JWT, CORS, entre otras)
-pip install -r requirements.txt
-
-# 4. Ejecución de migraciones de la base de datos
-python manage.py migrate
-
-# 5. Inicialización del servidor de desarrollo
-python manage.py runserver
+python manage.py test
 ```
-El servicio de backend estará disponible en: `http://127.0.0.1:8000`.
-
-### 2. Inicialización del Frontend (React + Vite)
-Abra una nueva instancia de terminal, navegue hacia el directorio `frontend` dentro de su proyecto.
-
-```bash
-# 1. Acceso al directorio
-cd frontend
-
-# 2. Instalación de paquetes y dependencias de Node.js
-npm install
-
-# 3. Ejecución del servidor de desarrollo de Vite
-npm run dev
-```
-La interfaz de usuario estará accesible a través de: `http://localhost:5173`.
 
 ---
 
-## 🏗️ Arquitectura y Seguridad del Sistema
+## 🚀 Plan de Despliegue a Producción
 
-### Control de Acceso Basado en Roles (RBAC)
-StockVision implementa un motor de autorización interno para administrar los permisos de acuerdo al cargo del usuario (`ADMIN`, `JEFE_INVENTARIO`, `EMPLEADO`). 
-Esto garantiza niveles de acceso dedicados y operaciones seguras:
-- __ADMIN:__ Posee control total; gestiona empresas, administra usuarios y accede a métricas financieras globales.
-- __JEFE_INVENTARIO:__ Dispone de acceso directo al control de inventario, detección de stock crítico y pronósticos predictivos para su compañía asignada.
-- __EMPLEADO:__ Cuenta con funciones delimitadas al módulo operativo diario y ejecución de movimientos de mercancía autorizados.
-
-### Diseño de Interfaz Optimizado
-Con el fin de prevenir la sobrecarga de información, el sistema implementa una jerarquía de navegación estructurada en dos niveles principales:
-1. __Portal de Inicio (`/inicio`):__ Funciona como punto de acceso principal. Presenta la identidad corporativa, detalla la información de la sesión activa (nombre de empleado y cargo), y actúa como interfaz de bienvenida.
-2. __Dashboard Analítico (`/dashboard`):__ Panel exclusivo para perfiles gerenciales y administrativos. Facilita acceso inmediato a indicadores de rendimiento clave (KPIs):
-    - Volumen total de productos.
-    - Alertas críticas activas con clasificación de urgencia.
-    - Tasas de rotación y tiempos promedios en almacén.
-    - Gráficas automatizadas de flujos de mercancía mensuales.
-
-### Protocolo de Inactividad y Cierre Automático
-Como medida de seguridad fundamental en el manejo de inventarios, las sesiones de usuario son monitoreadas continuamente de forma pasiva. A través del módulo `AutoLogout`, ante la ausencia de interacción (movimiento de cursor, desplazamiento o uso de teclado) por un lapso de __15 minutos__, los tokens de sesión (JWT) son invalidados permanentemente, redireccionando al usuario a la pantalla de autenticación.
-
-### Aislamiento de Datos Multi-Empresa (Multitenant DB)
-El backend procesa la información mediante filtros de aislamiento de datos. Mientras que el administrador del sistema puede visualizar los activos de cualquier sucursal o empresa registrada, las consultas (QuerySets) del personal operativo están estrictamente restringidas para exponer únicamente la información correspondiente a su respectiva organización.
-
----
-
-## 👥 Herramientas de Pruebas y Desarrollo
-Para propósitos de validación exhaustiva de la plataforma (Roles, Permisos, Vistas y Sucursales), es posible poblar la base de datos con perfiles de prueba automáticos (`ADMIN`, `JEFE_INVENTARIO`, `EMPLEADO`, `VENDEDOR`) en diversas sedes, mediante el siguiente comando:
-
-```bash
-python create_test_users.py
-```
-> __Nota de Credenciales__: La contraseña asignada por defecto a todos los usuarios generados es `12345` (Ej. `admin_test_1`, `vend_test_1`). Estas cuentas incluyen datos preconfigurados para facilitar la evaluación de los módulos.
-
----
-
-## ⚠️ Oportunidades de Mejora y Mantenimiento Futuro
-Se identifican los siguientes puntos técnicos y funcionales para ser incorporados en próximas versiones (Roadmap):
-1. __Paginación en el Módulo POS__: Para catálogos extensos, la renderización simultánea en el Punto de Venta puede comprometer el rendimiento. Se proyecta la implementación de paginación o carga diferida (_infinite scroll_).
-2. __Resolución de Concurrencia Transaccional__: Para evitar inconsistencias de inventario ante ventas simultáneas del mismo producto final, se requiere establecer bloqueos a nivel de base de datos (`select_for_update`).
-3. __Módulo de Arqueos e Historial de Caja__: Expansión funcional del Punto de Venta para soportar operaciones estructuradas de "Apertura y Cierre de Caja".
-4. __Optimización Multimedia__: Implementación de procesamiento y compresión de imágenes de productos en el servidor para reducir el consumo de ancho de banda y capacidad de almacenamiento.
-5. __Reportes Avanzados__: Integración de utilidades nativas para la exportación masiva de historiales financieros (Excel/PDF) y auditorías de mermas de inventario.
-6. __Recuperación de Credenciales__: Configuración de variables de entorno con un servidor SMTP establecido en `settings.py` para habilitar el restablecimiento de contraseñas en entornos de producción.
-
----
+Puntos de verificación previos a la puesta en marcha:
+1. **Configuración de Variables de Entorno:**
+   * Cambiar `DEBUG` a `False` en settings.
+   * Modificar la variable `SECRET_KEY` de producción.
+   * Configurar `ALLOWED_HOSTS` y `CORS_ALLOWED_ORIGINS` con los dominios oficiales de producción.
+2. **Servidor de Correos (SMTP):**
+   * Configurar las credenciales de correo SMTP para habilitar el flujo funcional de restablecimiento de contraseña en producción.
+3. **Seguridad Transaccional:**
+   * Bloqueo a nivel de filas (`select_for_update`) en el módulo de ventas de alta concurrencia para evitar inconsistencias de inventario simultáneas.

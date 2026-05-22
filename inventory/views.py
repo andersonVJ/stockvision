@@ -225,6 +225,8 @@ class InventoryViewSet(BaseInventoryViewSet):
         serializer = self.get_serializer(alerts, many=True)
         return Response(serializer.data)
 
+
+
 class StockMovementViewSet(BaseInventoryViewSet):
     queryset = StockMovement.objects.all()
     serializer_class = StockMovementSerializer

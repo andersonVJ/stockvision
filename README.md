@@ -112,5 +112,3 @@ Se identifican los siguientes puntos técnicos y funcionales para ser incorporad
 4. __Optimización Multimedia__: Implementación de procesamiento y compresión de imágenes de productos en el servidor para reducir el consumo de ancho de banda y capacidad de almacenamiento.
 5. __Reportes Avanzados__: Integración de utilidades nativas para la exportación masiva de historiales financieros (Excel/PDF) y auditorías de mermas de inventario.
 6. __Recuperación de Credenciales__: Configuración de variables de entorno con un servidor SMTP establecido en `settings.py` para habilitar el restablecimiento de contraseñas en entornos de producción.
-
----

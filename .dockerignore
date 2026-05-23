@@ -1,0 +1,53 @@
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Node modules (frontend has its own Dockerfile)
+frontend/node_modules/
+frontend/dist/
+
+# Git
+.git/
+.gitignore
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files (se montan o pasan como env)
+.env
+
+# Database dumps
+*.json
+!backend/**/*.json
+
+# Scratch / test files
+scratch/
+PRUEBAS.md
+datadump.json
+datadump_utf8.json
+output.json
+sales_real.json
+
+# Logs
+*.log
+Models/logs/
+
+# Saved ML models (se generan en runtime o se montan)
+Models/saved_models/*.pkl
+Models/data/*.csv
+
+# Docker
+docker-compose.yml
+docker-compose*.yml

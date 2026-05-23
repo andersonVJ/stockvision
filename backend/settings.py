@@ -4,11 +4,11 @@ from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-ko9_b6agm)00^%rp92dx(q^jzgzor64*+ihmm%som28!70ahug'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-ko9_b6agm)00^%rp92dx(q^jzgzor64*+ihmm%som28!70ahug')
 
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # APPLICATIONS
@@ -86,11 +86,11 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'mibasededatos',
-        'USER': 'django_user',
-        'PASSWORD': 'Admin123',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.environ.get('POSTGRES_DB', 'mibasededatos'),
+        'USER': os.environ.get('POSTGRES_USER', 'django_user'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'Admin123'),
+        'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
+        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
     }
 }
 
@@ -116,6 +116,7 @@ USE_TZ = True
 # STATIC FILES
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 
 # CUSTOM USER
@@ -152,16 +153,23 @@ SIMPLE_JWT = {
 
 # CORS (React)
 
-CORS_ALLOW_ALL_ORIGINS = True
+# En producción (Docker), Nginx actúa como proxy y no necesita CORS.
+# En desarrollo local, permitir todos los orígenes.
+_cors_origins = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+if _cors_origins:
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins.split(',') if o.strip()]
+else:
+    CORS_ALLOW_ALL_ORIGINS = True
 
 
 # EMAIL CONFIG (MAILTRAP)
 ANYMAIL = {
-    "MAILTRAP_API_TOKEN": "608f3081446736f6328600e46f24eb7a",
+    "MAILTRAP_API_TOKEN": os.environ.get('MAILTRAP_API_TOKEN', '608f3081446736f6328600e46f24eb7a'),
 }
 
 EMAIL_BACKEND = "anymail.backends.mailtrap.EmailBackend"
-DEFAULT_FROM_EMAIL = "Correo StockVision <Correo@stockvision.site>"
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Correo StockVision <Correo@stockvision.site>')
 
 # EMAIL CONFIG (RESEND - Anterior)
 # EMAIL_BACKEND = 'core.email_backends.ResendEmailBackend'

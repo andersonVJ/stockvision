@@ -66,7 +66,8 @@ export default function Sidebar() {
     return (
         <>
             {/* Mobile Header & Hamburger */}
-            <div className="md:hidden flex items-center justify-between p-4 bg-white border-b border-slate-200 sticky top-0 z-40 w-full shadow-sm">
+            <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200 sticky top-0 z-40 w-full shadow-sm"
+                 style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
                 <div className="flex items-center gap-2">
                     <div className="scale-75 origin-left">
                         <Logo />
@@ -79,19 +80,20 @@ export default function Sidebar() {
             </div>
 
             {/* Mobile Backdrop */}
-            {isOpen && (
-                <div 
-                    className="md:hidden fixed inset-0 bg-slate-800/50 z-[9998] backdrop-blur-sm transition-opacity"
-                    onClick={() => setIsOpen(false)}
-                />
-            )}
+            <div 
+                className={`md:hidden fixed inset-0 bg-slate-900/60 z-[9998] backdrop-blur-sm transition-opacity duration-300 ${
+                    isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                }`}
+                onClick={() => setIsOpen(false)}
+            />
 
             {/* Sidebar Container */}
-            <div className={`fixed md:sticky top-0 left-0 h-screen w-64 shrink-0 bg-white border-r border-slate-200 z-[9999] transition-transform duration-300 transform ${isOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 flex flex-col`}>
+            <div className={`fixed md:sticky top-0 left-0 h-[100dvh] w-[80vw] max-w-[280px] md:w-64 md:max-w-none shrink-0 bg-white border-r border-slate-200 z-[9999] transition-transform duration-300 ease-in-out transform ${isOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 flex flex-col overflow-hidden`}>
 
                 {/* Close Button inside Sidebar (Mobile) */}
-                <div className="md:hidden absolute top-4 right-4">
-                    <button onClick={() => setIsOpen(false)} className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg">
+                <div className="md:hidden flex justify-end px-3 pt-3"
+                     style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
+                    <button onClick={() => setIsOpen(false)} className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -112,8 +114,8 @@ export default function Sidebar() {
                 </div>
 
                 {/* Navigation Links */}
-                <nav className="flex-1 px-4 py-2 overflow-y-auto mt-12 md:mt-0">
-                    <ul className="space-y-1.5">
+                <nav className="flex-1 px-3 md:px-4 py-2 overflow-y-auto mt-1 md:mt-0 overscroll-contain">
+                    <ul className="space-y-1">
                         {filteredMenuItems.map((item) => (
                             <li key={item.name}>
                                 <button
@@ -139,9 +141,13 @@ export default function Sidebar() {
             </nav>
 
             {/* Bottom Config Links */}
-            <div className="p-4 border-t border-slate-100 space-y-1">
+            <div className="shrink-0 p-3 md:p-4 border-t border-slate-100 space-y-1"
+                 style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
                 <button
-                    onClick={() => navigate("/perfil")}
+                    onClick={() => {
+                        navigate("/perfil");
+                        setIsOpen(false);
+                    }}
                     className="w-full flex items-center px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-colors group"
                 >
                     <Settings className="w-[18px] h-[18px] mr-3 text-slate-400 group-hover:text-slate-600" />

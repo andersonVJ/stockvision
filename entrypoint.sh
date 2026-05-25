@@ -4,7 +4,7 @@ cd /app
 echo "=== StockVision Backend Entrypoint ==="
 
 echo "Esperando a PostgreSQL en ${POSTGRES_HOST:-db}:${POSTGRES_PORT:-5432}..."
-while ! python3 -c "
+while ! python -c "
 import socket, sys
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.settimeout(10)

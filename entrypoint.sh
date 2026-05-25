@@ -2,7 +2,7 @@
 set -e
 
 echo "=== StockVision Backend Entrypoint ==="
-
+cd /app   # ← AGREGAR ESTA LÍNEA
 # Esperar a que PostgreSQL esté disponible
 echo "Esperando a PostgreSQL en ${POSTGRES_HOST:-db}:${POSTGRES_PORT:-5432}..."
 while ! python -c "

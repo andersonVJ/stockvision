@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 cd /app
+
 echo "=== StockVision Backend Entrypoint ==="
 
 echo "Esperando a PostgreSQL en ${POSTGRES_HOST:-db}:${POSTGRES_PORT:-5432}..."
@@ -12,12 +13,13 @@ try:
     s.connect(('${POSTGRES_HOST:-db}', ${POSTGRES_PORT:-5432}))
     s.close()
     sys.exit(0)
-except:
+except Exception:
     sys.exit(1)
 " 2>/dev/null; do
     echo "  PostgreSQL no disponible, reintentando en 2s..."
     sleep 2
 done
+
 echo "PostgreSQL disponible!"
 
 # Ejecutar migraciones
@@ -28,7 +30,8 @@ python manage.py migrate --noinput
 echo "Recolectando archivos estáticos..."
 python manage.py collectstatic --noinput
 
-# Iniciar Gunicorn
+python manage.py check --deploy || true
+
 echo "Iniciando Gunicorn..."
 exec gunicorn backend.wsgi:application \
     --bind 0.0.0.0:8000 \

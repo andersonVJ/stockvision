@@ -11,157 +11,157 @@ const getAuthHeaders = () => {
 };
 
 export const getCategories = async () => {
-    const res = await axios.get(""/api/inventory/categories/", getAuthHeaders());
+    const res = await axios.get("/api/inventory/categories/", getAuthHeaders());
     return res.data;
 };
 
 export const createCategory = async (data) => {
-    const res = await axios.post(""/api/inventory/categories/", data, getAuthHeaders());
+    const res = await axios.post("/api/inventory/categories/", data, getAuthHeaders());
     return res.data;
 };
 
 export const updateCategory = async (id, data) => {
-    const res = await axios.put(`http://127.0.0.1:8000/api/inventory/categories/${id}/`, data, getAuthHeaders());
+    const res = await axios.put(`/api/inventory/categories/${id}/`, data, getAuthHeaders());
     return res.data;
 };
 
 export const deleteCategory = async (id) => {
-    const res = await axios.delete(`http://127.0.0.1:8000/api/inventory/categories/${id}/`, getAuthHeaders());
+    const res = await axios.delete(`/api/inventory/categories/${id}/`, getAuthHeaders());
     return res.data;
 };
 
 export const getProducts = async () => {
-    const res = await axios.get(""/api/inventory/products/", getAuthHeaders());
+    const res = await axios.get("/api/inventory/products/", getAuthHeaders());
     return res.data;
 };
 
 export const createProduct = async (data) => {
-    const res = await axios.post(""/api/inventory/products/", data, getAuthHeaders());
+    const res = await axios.post("/api/inventory/products/", data, getAuthHeaders());
     return res.data;
 };
 
 export const updateProduct = async (id, data) => {
-    const res = await axios.put(`http://127.0.0.1:8000/api/inventory/products/${id}/`, data, getAuthHeaders());
+    const res = await axios.put(`/api/inventory/products/${id}/`, data, getAuthHeaders());
     return res.data;
 };
 
 export const deleteProduct = async (id) => {
-    const res = await axios.delete(`http://127.0.0.1:8000/api/inventory/products/${id}/`, getAuthHeaders());
+    const res = await axios.delete(`/api/inventory/products/${id}/`, getAuthHeaders());
     return res.data;
 };
 
 export const getInventories = async () => {
-    const res = await axios.get(""/api/inventory/inventories/", getAuthHeaders());
+    const res = await axios.get("/api/inventory/inventories/", getAuthHeaders());
     return res.data;
 };
 
 export const getLowStockAlerts = async () => {
-    const res = await axios.get(""/api/inventory/inventories/low_stock_alerts/", getAuthHeaders());
+    const res = await axios.get("/api/inventory/inventories/low_stock_alerts/", getAuthHeaders());
     return res.data;
 };
 
 export const getMovements = async (filters = {}) => {
     const params = new URLSearchParams(filters).toString();
-    const url = `http://127.0.0.1:8000/api/inventory/movements/${params ? `?${params}` : ''}`;
+    const url = `/api/inventory/movements/${params ? `?${params}` : ''}`;
     const res = await axios.get(url, getAuthHeaders());
     return res.data;
 };
 
 
 export const createMovement = async (data) => {
-    const res = await axios.post(""/api/inventory/movements/", data, getAuthHeaders());
+    const res = await axios.post("/api/inventory/movements/", data, getAuthHeaders());
     return res.data;
 };
 
 export const getCompanies = async () => {
-    const res = await axios.get(""/api/companies/", getAuthHeaders());
+    const res = await axios.get("/api/companies/", getAuthHeaders());
     return res.data;
 };
 
 export const getBranches = async () => {
-    const res = await axios.get(""/api/companies/branches/", getAuthHeaders());
+    const res = await axios.get("/api/companies/branches/", getAuthHeaders());
     return res.data;
 };
 
 export const createBranch = async (data) => {
-    const res = await axios.post(""/api/companies/branches/", data, getAuthHeaders());
+    const res = await axios.post("/api/companies/branches/", data, getAuthHeaders());
     return res.data;
 };
 
 export const updateBranch = async (id, data) => {
-    const res = await axios.put(`http://127.0.0.1:8000/api/companies/branches/${id}/`, data, getAuthHeaders());
+    const res = await axios.put(`/api/companies/branches/${id}/`, data, getAuthHeaders());
     return res.data;
 };
 
 export const deleteBranch = async (id) => {
-    const res = await axios.delete(`http://127.0.0.1:8000/api/companies/branches/${id}/`, getAuthHeaders());
+    const res = await axios.delete(`/api/companies/branches/${id}/`, getAuthHeaders());
     return res.data;
 };
 
 export const getSales = async (filters = {}) => {
     const params = new URLSearchParams(filters).toString();
-    const url = `http://127.0.0.1:8000/api/inventory/sales/${params ? `?${params}` : ''}`;
+    const url = `/api/inventory/sales/${params ? `?${params}` : ''}`;
     const res = await axios.get(url, getAuthHeaders());
     return res.data;
 };
 
 export const getSalesByClient = async (document) => {
-    const res = await axios.get(`http://127.0.0.1:8000/api/inventory/sales/?client_document=${document}`, getAuthHeaders());
+    const res = await axios.get(`/api/inventory/sales/?client_document=${document}`, getAuthHeaders());
     return res.data;
 };
 
 export const createSale = async (data) => {
-    const res = await axios.post(""/api/inventory/sales/", data, getAuthHeaders());
+    const res = await axios.post("/api/inventory/sales/", data, getAuthHeaders());
     return res.data;
 };
 
 export const sendInvoiceEmail = async (saleId, email = null) => {
     const payload = email ? { email } : {};
-    const res = await axios.post(`http://127.0.0.1:8000/api/inventory/sales/${saleId}/send_email/`, payload, getAuthHeaders());
+    const res = await axios.post(`/api/inventory/sales/${saleId}/send_email/`, payload, getAuthHeaders());
     return res.data;
 };
 
 // --- NEW PROVIDERS API ---
 export const getProviders = async () => {
-    const res = await axios.get(""/api/inventory/providers/", getAuthHeaders());
+    const res = await axios.get("/api/inventory/providers/", getAuthHeaders());
     return res.data;
 };
 
 export const createProvider = async (data) => {
-    const res = await axios.post(""/api/inventory/providers/", data, getAuthHeaders());
+    const res = await axios.post("/api/inventory/providers/", data, getAuthHeaders());
     return res.data;
 };
 
 export const updateProvider = async (id, data) => {
-    const res = await axios.put(`http://127.0.0.1:8000/api/inventory/providers/${id}/`, data, getAuthHeaders());
+    const res = await axios.put(`/api/inventory/providers/${id}/`, data, getAuthHeaders());
     return res.data;
 };
 
 export const deleteProvider = async (id) => {
-    const res = await axios.delete(`http://127.0.0.1:8000/api/inventory/providers/${id}/`, getAuthHeaders());
+    const res = await axios.delete(`/api/inventory/providers/${id}/`, getAuthHeaders());
     return res.data;
 };
 
 // --- NEW ENTRIES API ---
 export const getEntries = async () => {
-    const res = await axios.get(""/api/inventory/entries/", getAuthHeaders());
+    const res = await axios.get("/api/inventory/entries/", getAuthHeaders());
     return res.data;
 };
 
 export const createEntry = async (data) => {
-    const res = await axios.post(""/api/inventory/entries/", data, getAuthHeaders());
+    const res = await axios.post("/api/inventory/entries/", data, getAuthHeaders());
     return res.data;
 };
 
 // --- DASHBOARD ALERTS ---
 export const getDashboardAlerts = async () => {
-    const res = await axios.get(""/api/inventory/products/dashboard_alerts/", getAuthHeaders());
+    const res = await axios.get("/api/inventory/products/dashboard_alerts/", getAuthHeaders());
     return res.data;
 };
 
 // --- NEW CLIENTS API ---
 export const getClientByDocument = async (idDocument) => {
-    const res = await axios.get(`http://127.0.0.1:8000/api/companies/clients/?id_document=${idDocument}`, getAuthHeaders());
+    const res = await axios.get(`/api/companies/clients/?id_document=${idDocument}`, getAuthHeaders());
     return res.data;
 };
 

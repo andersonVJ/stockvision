@@ -37,7 +37,7 @@ services:
     environment:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-dev-key-change-in-production}
       - DJANGO_DEBUG=${DJANGO_DEBUG:-False}
-      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      - DJANGO_ALLOWED_HOSTS=app.stockvision.site,localhost,127.0.0.1
       - POSTGRES_DB=${POSTGRES_DB:-stockvision}
       - POSTGRES_USER=${POSTGRES_USER:-stockvision_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-Admin123}

@@ -41,7 +41,7 @@ const AlertsPanel = ({ alerts = [] }) => {
         </span>
       </div>
       <div className="divide-y divide-gray-50 max-h-[500px] overflow-y-auto">
-        {(!alerts || alerts.length === 0) ? (
+        {(!Array.isArray(alerts) || alerts.length === 0) ? (
           <div className="p-8 text-center text-gray-500">
             <CheckCircle className="mx-auto mb-3 text-green-400" size={40} />
             <p>No hay alertas críticas en este momento.</p>

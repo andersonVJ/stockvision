@@ -19,7 +19,7 @@ const FiltersBar = ({ filters, setFilters, onExport, branches = [], categories =
             onChange={(e) => setFilters({...filters, branch: e.target.value})}
           >
             <option value="">Todas las Sedes</option>
-            {branches.map(branch => (
+            {Array.isArray(branches) && branches.map(branch => (
               <option key={branch.id} value={branch.id}>{branch.name}</option>
             ))}
           </select>
@@ -34,7 +34,7 @@ const FiltersBar = ({ filters, setFilters, onExport, branches = [], categories =
             onChange={(e) => setFilters({...filters, category: e.target.value})}
           >
             <option value="">Todas las Categorias</option>
-            {categories.map(cat => (
+            {Array.isArray(categories) && categories.map(cat => (
               <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
           </select>

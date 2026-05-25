@@ -11,12 +11,12 @@ const getAuthHeaders = () => {
 };
 
 export const getCategories = async () => {
-    const res = await axios.get("http://127.0.0.1:8000/api/inventory/categories/", getAuthHeaders());
+    const res = await axios.get(""/api/inventory/categories/", getAuthHeaders());
     return res.data;
 };
 
 export const createCategory = async (data) => {
-    const res = await axios.post("http://127.0.0.1:8000/api/inventory/categories/", data, getAuthHeaders());
+    const res = await axios.post(""/api/inventory/categories/", data, getAuthHeaders());
     return res.data;
 };
 
@@ -31,12 +31,12 @@ export const deleteCategory = async (id) => {
 };
 
 export const getProducts = async () => {
-    const res = await axios.get("http://127.0.0.1:8000/api/inventory/products/", getAuthHeaders());
+    const res = await axios.get(""/api/inventory/products/", getAuthHeaders());
     return res.data;
 };
 
 export const createProduct = async (data) => {
-    const res = await axios.post("http://127.0.0.1:8000/api/inventory/products/", data, getAuthHeaders());
+    const res = await axios.post(""/api/inventory/products/", data, getAuthHeaders());
     return res.data;
 };
 
@@ -51,12 +51,12 @@ export const deleteProduct = async (id) => {
 };
 
 export const getInventories = async () => {
-    const res = await axios.get("http://127.0.0.1:8000/api/inventory/inventories/", getAuthHeaders());
+    const res = await axios.get(""/api/inventory/inventories/", getAuthHeaders());
     return res.data;
 };
 
 export const getLowStockAlerts = async () => {
-    const res = await axios.get("http://127.0.0.1:8000/api/inventory/inventories/low_stock_alerts/", getAuthHeaders());
+    const res = await axios.get(""/api/inventory/inventories/low_stock_alerts/", getAuthHeaders());
     return res.data;
 };
 
@@ -69,22 +69,22 @@ export const getMovements = async (filters = {}) => {
 
 
 export const createMovement = async (data) => {
-    const res = await axios.post("http://127.0.0.1:8000/api/inventory/movements/", data, getAuthHeaders());
+    const res = await axios.post(""/api/inventory/movements/", data, getAuthHeaders());
     return res.data;
 };
 
 export const getCompanies = async () => {
-    const res = await axios.get("http://127.0.0.1:8000/api/companies/", getAuthHeaders());
+    const res = await axios.get(""/api/companies/", getAuthHeaders());
     return res.data;
 };
 
 export const getBranches = async () => {
-    const res = await axios.get("http://127.0.0.1:8000/api/companies/branches/", getAuthHeaders());
+    const res = await axios.get(""/api/companies/branches/", getAuthHeaders());
     return res.data;
 };
 
 export const createBranch = async (data) => {
-    const res = await axios.post("http://127.0.0.1:8000/api/companies/branches/", data, getAuthHeaders());
+    const res = await axios.post(""/api/companies/branches/", data, getAuthHeaders());
     return res.data;
 };
 
@@ -111,7 +111,7 @@ export const getSalesByClient = async (document) => {
 };
 
 export const createSale = async (data) => {
-    const res = await axios.post("http://127.0.0.1:8000/api/inventory/sales/", data, getAuthHeaders());
+    const res = await axios.post(""/api/inventory/sales/", data, getAuthHeaders());
     return res.data;
 };
 
@@ -123,12 +123,12 @@ export const sendInvoiceEmail = async (saleId, email = null) => {
 
 // --- NEW PROVIDERS API ---
 export const getProviders = async () => {
-    const res = await axios.get("http://127.0.0.1:8000/api/inventory/providers/", getAuthHeaders());
+    const res = await axios.get(""/api/inventory/providers/", getAuthHeaders());
     return res.data;
 };
 
 export const createProvider = async (data) => {
-    const res = await axios.post("http://127.0.0.1:8000/api/inventory/providers/", data, getAuthHeaders());
+    const res = await axios.post(""/api/inventory/providers/", data, getAuthHeaders());
     return res.data;
 };
 
@@ -144,18 +144,18 @@ export const deleteProvider = async (id) => {
 
 // --- NEW ENTRIES API ---
 export const getEntries = async () => {
-    const res = await axios.get("http://127.0.0.1:8000/api/inventory/entries/", getAuthHeaders());
+    const res = await axios.get(""/api/inventory/entries/", getAuthHeaders());
     return res.data;
 };
 
 export const createEntry = async (data) => {
-    const res = await axios.post("http://127.0.0.1:8000/api/inventory/entries/", data, getAuthHeaders());
+    const res = await axios.post(""/api/inventory/entries/", data, getAuthHeaders());
     return res.data;
 };
 
 // --- DASHBOARD ALERTS ---
 export const getDashboardAlerts = async () => {
-    const res = await axios.get("http://127.0.0.1:8000/api/inventory/products/dashboard_alerts/", getAuthHeaders());
+    const res = await axios.get(""/api/inventory/products/dashboard_alerts/", getAuthHeaders());
     return res.data;
 };
 

@@ -272,7 +272,7 @@ export default function GestionEmpleados() {
                               </button>
 
                               <button
-                                onClick={() => handleDelete(emp.id)}
+                                onClick={() => handleDeleteEmployee(emp.id)}
                                 className="text-red-500 hover:text-red-700 text-sm font-medium"
                               >
                                 Eliminar

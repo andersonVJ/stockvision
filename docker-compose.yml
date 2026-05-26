@@ -73,18 +73,21 @@ services:
   nginx:
     image: nginx:alpine
     restart: unless-stopped
+    # SIN ports — Traefik se conecta internamente
+    expose:
+      - "80"
     networks:
       - stockvision_net
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.stockvision.rule=Host(`app.stockvision.site`)"
-      - "traefik.http.routers.stockvision.entrypoints=web"
-      - "traefik.http.services.stockvision.loadbalancer.server.port=80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - static_files:/app/staticfiles:ro
       - media_files:/app/media:ro
-      - ./media:/app/media:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.stockvision-nginx.rule=Host(`app.stockvision.site`)"
+      - "traefik.http.routers.stockvision-nginx.entrypoints=websecure"
+      - "traefik.http.routers.stockvision-nginx.tls=true"
+      - "traefik.http.services.stockvision-nginx.loadbalancer.server.port=80"
     depends_on:
       - backend
       - frontend

@@ -18,16 +18,22 @@ class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.ReadOnlyField(source='category.name')
     fecha_estimada_fin_vida = serializers.ReadOnlyField()
     providers_details = ProviderSerializer(source='providers', many=True, read_only=True)
+    image = serializers.SerializerMethodField()
     
     class Meta:
         model = Product
         fields = '__all__'
         read_only_fields = ('created_at', 'updated_at', 'company')
 
+    def get_image(self, obj):
+        if obj.image:
+            return obj.image.url
+        return None
+
 class InventorySerializer(serializers.ModelSerializer):
     product_name = serializers.ReadOnlyField(source='product.name')
     product_sku = serializers.ReadOnlyField(source='product.sku')
-    product_image = serializers.ImageField(source='product.image', read_only=True)
+    product_image = serializers.SerializerMethodField()
     product_description = serializers.ReadOnlyField(source='product.description')
     product_price = serializers.ReadOnlyField(source='product.price')
     branch_name = serializers.ReadOnlyField(source='warehouse.branch.name')
@@ -39,6 +45,11 @@ class InventorySerializer(serializers.ModelSerializer):
         model = Inventory
         fields = '__all__'
         read_only_fields = ('last_updated',)
+
+    def get_product_image(self, obj):
+        if obj.product and obj.product.image:
+            return obj.product.image.url
+        return None
 
 class StockMovementSerializer(serializers.ModelSerializer):
     inventory_product_name = serializers.ReadOnlyField(source='inventory.product.name')

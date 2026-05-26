@@ -91,6 +91,8 @@ class ProductViewSet(BaseInventoryViewSet):
         # Determine effective company
         if user.is_superuser:
             effective_company_id = company_id if company_id else (company.id if company else None)
+            if effective_company_id is None:
+                raise ValidationError({"detail": "Error: Los SuperAdministradores globales no pueden crear registros en inventario. Cierra sesión e ingresa con un usuario Administrador local de la empresa."})
         else:
             if not company:
                 raise ValidationError({"detail": "Tu usuario no tiene una empresa asociada."})

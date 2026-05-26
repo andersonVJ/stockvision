@@ -24,6 +24,8 @@ class CategoryViewSet(BaseInventoryViewSet):
         if company_id and user.is_superuser:
             serializer.save(company_id=company_id)
         else:
+            if user.is_superuser and not company:
+                raise ValidationError({"detail": "Error: Los SuperAdministradores globales no pueden crear registros en inventario. Cierra sesión e ingresa con un usuario Administrador local de la empresa."})
             if not user.is_superuser and not company:
                 raise ValidationError({"detail": "Tu usuario no tiene una empresa asociada."})
             serializer.save(company=company)

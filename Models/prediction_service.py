@@ -168,16 +168,23 @@ class PredictionService:
 
                 p_sales_sorted = p_sales.sort_values("date")
                 
+                import math
+                def safe_float(v, default=0.0):
+                    try:
+                        f = float(v)
+                        return default if math.isnan(f) else f
+                    except:
+                        return default
+
                 # Rolling means
-                rm_7 = round(float(p_sales_sorted.tail(7)["quantity"].mean()), 2)
-                rm_30 = round(float(p_sales_sorted.tail(30)["quantity"].mean()), 2)
+                rm_7 = round(safe_float(p_sales_sorted.tail(7)["quantity"].mean()), 2)
+                rm_30 = round(safe_float(p_sales_sorted.tail(30)["quantity"].mean()), 2)
                 
-                # Volatilidad para Safety Stock (Desviación estándar de los últimos 30 días)
-                # Volatilidad para Safety Stock (Usamos los últimos 90 días para la volatilidad)
+                # Volatilidad para Safety Stock
                 recent_sales = p_sales_sorted.tail(90)
-                std_dev = recent_sales["quantity"].std()
-                if pd.isna(std_dev): std_dev = p_sales_sorted["quantity"].std()
-                if pd.isna(std_dev): std_dev = rm_30 * 0.2 # Fallback
+                std_dev = safe_float(recent_sales["quantity"].std())
+                if std_dev == 0.0: std_dev = safe_float(p_sales_sorted["quantity"].std())
+                if std_dev == 0.0: std_dev = rm_30 * 0.2 # Fallback
                 
                 # Lead Time (from inventory data)
                 lead_time = row.get("lead_time", 7) 

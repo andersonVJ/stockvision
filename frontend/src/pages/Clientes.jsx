@@ -117,7 +117,8 @@ export default function Clientes() {
       alert("Factura enviada correctamente al correo del cliente.");
     } catch (error) {
       console.error("Error sending email:", error);
-      alert("Error al enviar el correo.");
+      const serverMsg = error.response?.data?.error || "Error desconocido en el servidor.";
+      alert(`Error al enviar el correo: ${serverMsg}`);
     } finally {
       setSendingEmail(null);
     }

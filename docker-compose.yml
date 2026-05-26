@@ -85,7 +85,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.stockvision-nginx.rule=Host(`app.stockvision.site`)"
-      - "traefik.http.routers.stockvision-nginx.entrypoints=websecure"
+      - "traefik.http.routers.stockvision-nginx.entrypoints=web"
       - "traefik.http.routers.stockvision-nginx.tls=true"
       - "traefik.http.services.stockvision-nginx.loadbalancer.server.port=80"
     depends_on:
@@ -96,9 +96,10 @@ services:
   traefik:
     image: traefik:v2.11
     command:
-    - "--api.insecure=true"
-    - "--providers.docker=true"
-    - "--entrypoints.web.address=:8081"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.address=:80"
     ports:
       - "8081:80"
       - "8080:8080"

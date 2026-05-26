@@ -78,37 +78,26 @@ class PredictionService:
 
             # Fallback
             if not xgboost_loaded:
-
-                model_logger.warning(
-                    "No XGBoost model found. Training dynamically..."
-                )
-
-                xgboost.train(
-                    sales_df,
-                    inv_df
-                )
+                if sales_df.empty:
+                    model_logger.warning("No sales data available. Skipping XGBoost training.")
+                else:
+                    model_logger.warning("No XGBoost model found. Training dynamically...")
+                    xgboost.train(sales_df, inv_df)
 
             # ==========================================
-            # FEATURES
+            # FEATURES & PREDICTIONS
             # ==========================================
 
-            xgb_features = xgboost.extract_features(
-                sales_df,
-                inv_df
-            )
-
-            # Última fila por producto
-            xgb_latest = xgb_features.groupby(
-                "product_id"
-            ).tail(1)
-
-            # ==========================================
-            # PREDICT STATES
-            # ==========================================
-
-            states = xgboost.predict(
-                xgb_latest
-            )
+            if sales_df.empty:
+                model_logger.info("Using inventory fallback due to empty sales data.")
+                xgb_latest = inv_df.copy()
+                if "product_id" not in xgb_latest.columns and "id" in xgb_latest.columns:
+                    xgb_latest["product_id"] = xgb_latest["id"]
+                states = ["STABLE"] * len(xgb_latest)
+            else:
+                xgb_features = xgboost.extract_features(sales_df, inv_df)
+                xgb_latest = xgb_features.groupby("product_id").tail(1)
+                states = xgboost.predict(xgb_latest)
 
             # ==========================================
             # BUILD RESPONSE

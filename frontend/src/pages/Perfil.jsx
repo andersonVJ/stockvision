@@ -92,23 +92,13 @@ export default function Perfil() {
                 </div>
               </div>
               <div>
-                <p className="text-sm text-slate-500 mb-1">Cargo Asignado</p>
-                <div className="mt-1">
-                  {user.position_display ? (
-                    <span className="inline-block px-3 py-1 text-xs font-semibold bg-indigo-100 text-indigo-700 rounded-full border border-indigo-200">
-                      {user.position_display}
-                    </span>
-                  ) : (
-                    <span className="text-slate-400 italic">Sin cargo asignado</span>
-                  )}
-                </div>
+                <p className="text-sm text-slate-500 mb-1">Correo Electrónico</p>
+                <p className="font-medium text-slate-800">{user.email || "No registrado"}</p>
               </div>
-              {user.assigned_by_name && (
-                <div className="md:col-span-2">
-                  <p className="text-sm text-slate-500 mb-1">Jefe que asignó el cargo</p>
-                  <p className="font-medium text-slate-800">{user.assigned_by_name}</p>
-                </div>
-              )}
+              <div>
+                <p className="text-sm text-slate-500 mb-1">Empresa</p>
+                <p className="font-medium text-slate-800">{user.company_name || "Sin empresa asignada"}</p>
+              </div>
             </div>
             
             {(user.role === 'ADMIN' || user.role === 'JEFE_INVENTARIO') && (

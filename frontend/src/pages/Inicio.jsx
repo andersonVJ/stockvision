@@ -151,17 +151,7 @@ export default function Inicio() {
               <span className="inline-block px-4 py-1.5 text-sm font-semibold bg-blue-100 text-blue-700 rounded-full border border-blue-200">
                 {getRoleDisplayName(role)}
               </span>
-              {user?.position_display && (
-                <span className="inline-block px-4 py-1.5 text-sm font-semibold bg-indigo-100 text-indigo-700 rounded-full border border-indigo-200">
-                  Cargo: {user.position_display}
-                </span>
-              )}
             </div>
-            {user?.assigned_by_name && (
-              <p className="text-sm text-slate-500 mt-3">
-                Asignado por: <span className="font-medium">{user.assigned_by_name}</span>
-              </p>
-            )}
           </div>
 
           <p className="text-sm text-slate-400 mt-8">

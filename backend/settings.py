@@ -165,8 +165,12 @@ else:
 
 
 # EMAIL CONFIG (MAILTRAP)
+_mailtrap_token = os.environ.get('MAILTRAP_API_TOKEN', '').strip()
+if not _mailtrap_token:
+    _mailtrap_token = 'e7bfc3982455596788b3f359012981f2'
+
 ANYMAIL = {
-    "MAILTRAP_API_TOKEN": os.environ.get('MAILTRAP_API_TOKEN', 'e7bfc3982455596788b3f359012981f2'),
+    "MAILTRAP_API_TOKEN": _mailtrap_token,
 }
 
 EMAIL_BACKEND = "anymail.backends.mailtrap.EmailBackend"

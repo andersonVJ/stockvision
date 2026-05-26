@@ -601,8 +601,8 @@ class SaleViewSet(BaseInventoryViewSet):
             f"""
             <tr>
                 <td style="padding: 16px 0; border-bottom: 1px solid #f3f4f6;">
-                    <p style="margin: 0; font-size: 14px; font-weight: 500; color: #111827;">{item.product.name}</p>
-                    <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">SKU: {item.product.sku}</p>
+                    <p style="margin: 0; font-size: 14px; font-weight: 500; color: #111827;">{item.product.name if item.product else 'Producto Eliminado'}</p>
+                    <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">SKU: {item.product.sku if item.product else 'N/A'}</p>
                 </td>
                 <td style="padding: 16px 0; border-bottom: 1px solid #f3f4f6; text-align: center; font-size: 14px; color: #374151;">
                     {item.quantity}

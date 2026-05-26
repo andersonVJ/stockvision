@@ -37,7 +37,6 @@ services:
     volumes:
       - static_files:/app/staticfiles
       - media_files:/app/media
-      - ./media:/app/media  # Montar media local para preservar archivos existentes
     environment:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-dev-key-change-in-production}
       - DJANGO_DEBUG=${DJANGO_DEBUG:-False}

@@ -16,6 +16,23 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role', 'is_superuser', 'is_staff', 'company', 'company_name', 'branch', 'branch_name', 'cedula', 'position', 'position_display', 'assigned_by', 'assigned_by_name')
         read_only_fields = ('id', 'is_superuser', 'is_staff', 'assigned_by_name')
 
+    def validate(self, attrs):
+        # Prevent inconsistent branch assignment when company is updated
+        company = attrs.get('company', self.instance.company if self.instance else None)
+        branch = attrs.get('branch', self.instance.branch if self.instance else None)
+        
+        if self.instance and 'company' in attrs and attrs['company'] != self.instance.company:
+            # If changing company and no valid branch for the new company is provided
+            if 'branch' not in attrs or attrs['branch'] is None:
+                attrs['branch'] = None
+                branch = None
+
+        if branch and company:
+            if branch.company != company:
+                attrs['branch'] = None # Clear invalid branch automatically
+
+        return attrs
+
     def get_assigned_by_name(self, obj):
         if obj.assigned_by:
             return f"{obj.assigned_by.first_name} {obj.assigned_by.last_name}".strip() or obj.assigned_by.username

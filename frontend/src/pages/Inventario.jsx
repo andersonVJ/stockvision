@@ -350,7 +350,7 @@ export default function Inventario() {
                           <div key={product.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow flex flex-col group relative">
                             <div className="h-48 bg-slate-100 relative overflow-hidden flex items-center justify-center">
                               {product.image ? (
-                                <img src={typeof product.image === 'string' && product.image.startsWith('http') ? product.image : `http://127.0.0.1:8000${product.image}`} alt={product.name} className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500 mix-blend-multiply" />
+                                <img src={product.image} alt={product.name} className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500 mix-blend-multiply" />
                               ) : (
                                 <span className="text-slate-300 font-bold text-lg px-6 text-center">{product.name}</span>
                               )}

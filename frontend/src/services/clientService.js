@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://127.0.0.1:8000/api/companies/clients/";
+const API_URL = "/api/companies/clients/";
 
 const getAuthHeaders = () => {
     const tokens = JSON.parse(localStorage.getItem("tokens") || "{}");

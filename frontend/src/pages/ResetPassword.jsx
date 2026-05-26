@@ -18,7 +18,7 @@ export default function ResetPassword() {
   useEffect(() => {
     const validateToken = async () => {
       try {
-        const response = await axios.get(`http://127.0.0.1:8000/api/companies/password-reset-confirm/?token=${token}`);
+
         setTime(response.data.remaining_seconds);
       } catch (err) {
         setIsTokenValid(false);

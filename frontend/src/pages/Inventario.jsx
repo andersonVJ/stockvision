@@ -91,7 +91,10 @@ export default function Inventario() {
       setIsEditingCategory(false);
       setEditingCategoryId(null);
       loadData();
-    } catch (err) { showErrorAlert(`Error al guardar categoría: ${err.message}`); }
+    } catch (err) { 
+      const msg = err.response?.data?.detail || (typeof err.response?.data === 'string' ? err.response.data : null) || `Error al guardar categoría: ${err.message}`;
+      showErrorAlert(msg); 
+    }
   };
 
   const handleDeleteCategory = async (id) => {
@@ -160,7 +163,10 @@ export default function Inventario() {
       setProdData({ name: "", sku: "", price: "", category: "", fecha_ingreso: "", image: null, providers: [], description: "" });
       showSuccessAlert("Producto guardado con éxito");
       loadData();
-    } catch (err) { showErrorAlert(`Error al guardar producto: ${err.message}`); }
+    } catch (err) { 
+      const msg = err.response?.data?.detail || (typeof err.response?.data === 'string' ? err.response.data : null) || `Error al guardar producto: ${err.message}`;
+      showErrorAlert(msg); 
+    }
   };
 
   const handleDeleteProduct = async () => {
@@ -217,7 +223,10 @@ export default function Inventario() {
       setShowMovementModal(false);
       showSuccessAlert("Movimiento registrado con éxito");
       loadData();
-    } catch (err) { showErrorAlert(`Error al registrar movimiento: ${err.message}`); }
+    } catch (err) { 
+      const msg = err.response?.data?.detail || (typeof err.response?.data === 'string' ? err.response.data : null) || `Error al registrar movimiento: ${err.message}`;
+      showErrorAlert(msg); 
+    }
   };
 
   const getProductDetails = (sku) => {

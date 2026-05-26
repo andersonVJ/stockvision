@@ -50,7 +50,12 @@ class InventoryService:
                         ).first()
                     
                     if not inventory:
-                        raise ValidationError(f"Inventario para {product.name} no encontrado en ningún almacén de la sede.")
+                        # Auto-crear inventario con stock 0 si no existe (sedes nuevas o migradas)
+                        inventory, _ = Inventory.objects.get_or_create(
+                            product=product,
+                            warehouse=warehouse,
+                            defaults={'quantity': 0, 'min_stock': 5, 'max_stock': 100}
+                        )
                     
                     if inventory.quantity < quantity:
                         raise ValidationError(f"Inventario insuficiente para {product.name}. Disponibles: {inventory.quantity}")

@@ -91,11 +91,23 @@ class BranchViewSet(viewsets.ModelViewSet):
             company = user.company
             branch = serializer.save(company=company)
         
-        # Al crear Sede, crear Inventory para todos los Productos de la Empresa
-        from inventory.models import Product, Inventory
-        products = Product.objects.filter(company=company)
+        # Al crear Sede, crear Warehouse y luego Inventory para todos los Productos de la Empresa
+        from inventory.models import Product, Inventory, Warehouse
+        warehouse, _ = Warehouse.objects.get_or_create(
+            branch=branch,
+            type='STORAGE',
+            defaults={
+                'name': f'Almacén Principal - {branch.name}',
+                'is_active': True
+            }
+        )
+        products = Product.objects.filter(company=company, is_active=True)
         for product in products:
-            Inventory.objects.create(product=product, branch=branch)
+            Inventory.objects.get_or_create(
+                product=product,
+                warehouse=warehouse,
+                defaults={'quantity': 0, 'min_stock': 5, 'max_stock': 100}
+            )
 
 # ============================================
 # CLIENT VIEWSET

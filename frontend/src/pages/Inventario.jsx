@@ -241,7 +241,7 @@ export default function Inventario() {
     }
     if (categoryFilter) { passCat = String(product.category) === String(categoryFilter); }
     if (branchFilter && user.role === 'ADMIN') { 
-        passBranch = inventories.some(inv => inv.product_sku === product.sku && String(inv.branch) === String(branchFilter)); 
+        passBranch = inventories.some(inv => inv.product_sku === product.sku && String(inv.branch_id) === String(branchFilter)); 
     }
     return passSearch && passCat && passBranch;
   });
@@ -329,7 +329,7 @@ export default function Inventario() {
                                 .map(name => inventories.find(inv => inv.branch_name === name))
                                 .filter(Boolean)
                                 .map(inv => (
-                                  <option key={inv.branch} value={inv.branch}>{inv.branch_name}</option>
+                                  <option key={inv.branch_id} value={inv.branch_id}>{inv.branch_name}</option>
                                 ))}
                             </select>
                          </div>
@@ -351,7 +351,7 @@ export default function Inventario() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                       {filteredProducts.map(product => {
                         const prodInvs = inventories.filter(inv => inv.product_sku === product.sku);
-                        const displayInvs = (branchFilter && user.role === 'ADMIN') ? prodInvs.filter(i => String(i.branch) === String(branchFilter)) : prodInvs;
+                        const displayInvs = (branchFilter && user.role === 'ADMIN') ? prodInvs.filter(i => String(i.branch_id) === String(branchFilter)) : prodInvs;
                         const totalQuantity = displayInvs.reduce((sum, i) => sum + i.quantity, 0);
                         const isLowStock = totalQuantity > 0 && totalQuantity < 10;
                         
@@ -408,7 +408,7 @@ export default function Inventario() {
                         <tbody className="divide-y divide-slate-100">
                           {filteredProducts.map(product => {
                             const prodInvs = inventories.filter(inv => inv.product_sku === product.sku);
-                            const displayInvs = (branchFilter && user.role === 'ADMIN') ? prodInvs.filter(i => String(i.branch) === String(branchFilter)) : prodInvs;
+                            const displayInvs = (branchFilter && user.role === 'ADMIN') ? prodInvs.filter(i => String(i.branch_id) === String(branchFilter)) : prodInvs;
                             const totalQuantity = displayInvs.reduce((sum, i) => sum + i.quantity, 0);
                             
                             return (

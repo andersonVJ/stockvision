@@ -133,6 +133,9 @@ class EmployeeDetailView(generics.RetrieveUpdateDestroyAPIView):
             return User.objects.none()
             
         if user.is_staff or user.is_admin:
+            from django.db.models import Q
+            if user.branch:
+                return User.objects.filter(Q(company=company) | Q(branch=user.branch))
             return User.objects.filter(company=company)
             
         elif user.is_jefe_inventario:

@@ -1,118 +1,82 @@
 from django.core.management.base import BaseCommand
 import pandas as pd
 import numpy as np
-import datetime
-import random
 import xgboost as xgb
-from sklearn.model_selection import GridSearchCV
-from inventory.models import Product, Inventory
-from django.db.models import Sum
 from Models.XGBoostModel.xgb_pipeline import XGBInventoryClassifier
 from Models.ProphetModel.prophet_pipeline import ProphetDemandPredictor
+from Models.data_loader import DataLoader
+from prophet import Prophet
+import joblib
 
 class Command(BaseCommand):
-    help = 'Entrena los modelos de Machine Learning (XGBoost y Prophet) con datos realistas generados.'
+    help = 'Entrena los modelos de Machine Learning (XGBoost y Prophet) con los datos REALES históricos de la BD.'
 
     def handle(self, *args, **options):
-        self.stdout.write(">> Iniciando proceso de entrenamiento de modelos ML...")
+        self.stdout.write(self.style.WARNING(">> Iniciando proceso de entrenamiento con datos reales..."))
 
-        # 1. Obtener productos de la base de datos
-        products = Product.objects.filter(is_active=True)
-        product_ids = list(products.values_list('id', flat=True))
+        # 1. Cargar datos reales
+        sales_df = DataLoader.load_historical_sales()
+        inv_df = DataLoader.load_inventory_snapshot()
 
-        if not product_ids:
-            self.stdout.write(self.style.ERROR("No hay productos activos en la base de datos para entrenar."))
+        if sales_df.empty:
+            self.stdout.write(self.style.ERROR("No hay ventas históricas para entrenar. Ejecuta 'seed_historical_sales' primero."))
             return
 
-        # 2. Generar datos históricos sintéticos (2 años)
-        self.stdout.write(f"Generando 2 años de datos históricos para {len(product_ids)} productos...")
-        dates = [datetime.date.today() - datetime.timedelta(days=i) for i in range(730)] # 2 years
-        sales_data = {'date': [], 'product_id': [], 'qty': []}
+        self.stdout.write(f"Ventas cargadas: {len(sales_df)} registros. Inventario cargado: {len(inv_df)} productos.")
 
-        for pid in product_ids:
-            base_demand = random.randint(5, 50)
-            for d in dates:
-                # Simulando estacionalidad y picos (Ej: fines de semana o fin de mes)
-                seasonality_boost = 1.0
-                if d.weekday() >= 5: # Fines de semana venden un poco más en este mock
-                    seasonality_boost = 1.2
-                if d.month == 12: # Diciembre suele tener más ventas
-                    seasonality_boost = 1.5
-
-                daily_qty = max(0, int((base_demand + random.randint(-5, 10)) * seasonality_boost))
-                
-                sales_data['date'].append(d)
-                sales_data['product_id'].append(pid)
-                sales_data['qty'].append(daily_qty)
-
-        sales_df = pd.DataFrame(sales_data)
-        sales_df['date'] = pd.to_datetime(sales_df['date'])
-
-        # 3. Generar snapshot de inventario actual para el entrenamiento de XGBoost
-        self.stdout.write("Generando snapshot de inventario actual...")
-        inventory_data = []
-        for p in products:
-            total_stock = Inventory.objects.filter(product=p).aggregate(Sum('quantity'))['quantity__sum'] or 0
-            inventory_data.append({
-                'product_id': p.id,
-                'product_name': p.name,
-                'category_name': p.category.name if p.category else "General",
-                'current_stock': float(total_stock),
-                'min_stock': 10
-            })
-        inv_df = pd.DataFrame(inventory_data)
-
-        # 4. Entrenar y Optimizar XGBoost (GridSearchCV)
-        self.stdout.write(">> Optimizando y Entrenando XGBoostClassifier...")
+        # 2. Entrenar XGBoost
+        self.stdout.write(">> Entrenando XGBoostClassifier...")
         xgb_pipeline = XGBInventoryClassifier()
-        features_df = xgb_pipeline.extract_features(sales_df, inv_df)
-        
-        # Generar etiquetas sintéticas inteligentes basadas en la relación para el entrenamiento
-        # (Idealmente estas etiquetas vendrían marcadas por un humano o registro histórico real de quiebres)
-        labels = features_df.apply(xgb_pipeline._determine_mock_label, axis=1)
-        X = features_df[['sales_velocity', 'stock_to_demand_ratio', 'current_stock']]
-
-        param_grid = {
-            'max_depth': [3, 4, 5],
-            'learning_rate': [0.01, 0.05, 0.1],
-            'n_estimators': [100, 200]
-        }
-        
-        base_xgb = xgb.XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
-        grid_search = GridSearchCV(estimator=base_xgb, param_grid=param_grid, cv=3)
-        grid_search.fit(X, labels)
-
-        self.stdout.write(self.style.SUCCESS(f"Mejores parámetros XGBoost encontrados: {grid_search.best_params_}"))
-        
-        # Guardar el mejor modelo reemplazando el del pipeline
-        xgb_pipeline.model = grid_search.best_estimator_
+        # Entrenamos. El pipeline interno extraerá features y asignará etiquetas (labels) si no le pasamos.
+        xgb_pipeline.train(sales_df, inv_df)
         if xgb_pipeline.save_model():
             self.stdout.write(self.style.SUCCESS("Modelo XGBoost guardado exitosamente (.pkl)"))
         else:
             self.stdout.write(self.style.ERROR("Error al guardar el modelo XGBoost."))
 
-        # 5. Entrenar Prophet Global (Agregado) para inicializar el peso de los datos
-        self.stdout.write(">> Entrenando modelo Prophet global (como baseline)...")
+        # 3. Entrenar Prophet (Un modelo por cada Producto, porque prediction_service espera un dict)
+        self.stdout.write(">> Entrenando modelos Prophet por producto...")
         prophet_pipeline = ProphetDemandPredictor()
         
-        # Cambiamos los hiperparámetros antes de entrenar
-        from prophet import Prophet
-        prophet_pipeline.model = Prophet(
-            yearly_seasonality=True, 
-            weekly_seasonality=True, 
-            daily_seasonality=False,
-            changepoint_prior_scale=0.08, # Un poco más flexible a cambios de tendencia
-            seasonality_prior_scale=10.0
-        )
-        prophet_pipeline.model.add_country_holidays(country_name='CO') # Agrega feriados
+        models_dict = {}
+        unique_products = sales_df['product_id'].unique()
         
-        # Propagamos los datos (prophet requiere un dataframe formateado)
-        train_df = prophet_pipeline.prepare_data(sales_df)
-        prophet_pipeline.model.fit(train_df)
-        
-        if prophet_pipeline.save_model():
-            self.stdout.write(self.style.SUCCESS("Modelo Prophet (Baseline Global) guardado exitosamente (.pkl)"))
-        else:
-            self.stdout.write(self.style.ERROR("Error al guardar el modelo Prophet."))
+        for p_id in unique_products:
+            # Filtrar datos del producto
+            p_df = sales_df[sales_df['product_id'] == p_id].copy()
+            if p_df.empty or p_df['quantity'].sum() == 0:
+                continue
+                
+            try:
+                # Preparar dataset 'ds' y 'y'
+                train_df = prophet_pipeline.prepare_data(p_df)
+                
+                # Instanciar y entrenar
+                m = Prophet(
+                    yearly_seasonality=False, 
+                    weekly_seasonality=True, 
+                    daily_seasonality=False,
+                    changepoint_prior_scale=0.05,
+                    seasonality_prior_scale=10.0
+                )
+                m.add_country_holidays(country_name='CO')
+                m.fit(train_df)
+                
+                models_dict[p_id] = m
+                self.stdout.write(f"  - Prophet entrenado para producto ID: {p_id}")
+            except Exception as e:
+                self.stdout.write(self.style.WARNING(f"  - No se pudo entrenar Prophet para producto {p_id}: {str(e)}"))
 
-        self.stdout.write(self.style.SUCCESS(">> ¡Entrenamiento completado exitosamente! Los modelos ya están listos para predecir con mayor precisión."))
+        # Guardar el diccionario de modelos Prophet
+        prophet_pipeline.model = models_dict
+        if prophet_pipeline.save_model():
+            self.stdout.write(self.style.SUCCESS("Modelos Prophet guardados exitosamente (.pkl)"))
+        else:
+            self.stdout.write(self.style.ERROR("Error al guardar los modelos Prophet."))
+
+        # 4. Limpiar Caché de Analíticas para forzar nuevas predicciones
+        from analytics.models import AnalyticsCache
+        AnalyticsCache.objects.all().delete()
+        self.stdout.write(self.style.SUCCESS(">> Caché de analíticas limpiada."))
+        
+        self.stdout.write(self.style.SUCCESS(">> ¡Entrenamiento REAL completado exitosamente! Los modelos ya están listos en Producción."))

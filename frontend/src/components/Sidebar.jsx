@@ -72,7 +72,7 @@ export default function Sidebar() {
             {/* Mobile Header & Hamburger */}
             <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200 sticky top-0 z-40 w-full shadow-sm"
                  style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/inicio')}>
                     <div className="scale-75 origin-left">
                         <Logo />
                     </div>
@@ -104,7 +104,7 @@ export default function Sidebar() {
 
                 {/* Head / Logo (Desktop only) */}
                 <div className="hidden md:flex items-center p-6 h-24">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/inicio')}>
                         <Logo />
                         <div className="flex flex-col">
                             <h1 className="text-xl font-bold tracking-tight text-slate-800 leading-tight">

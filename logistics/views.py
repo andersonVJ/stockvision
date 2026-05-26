@@ -21,18 +21,22 @@ class BaseLogisticsViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         qs = super().get_queryset()
-        company = user.company
         
+        if user.is_superuser:
+            company_id = self.request.query_params.get('company')
+            if company_id:
+                return qs.filter(company_id=company_id)
+            return qs
+            
+        company = getattr(user, 'company', None)
         if not company:
             return qs.none()
 
-        # Los administradores y jefes de inventario ven todo lo de la empresa
-        is_manager = user.is_superuser or user.is_staff or user.role in ['ADMIN', 'JEFE_INVENTARIO']
+        is_manager = user.is_staff or user.role in ['ADMIN', 'JEFE_INVENTARIO']
         
         if is_manager:
             return qs.filter(company=company)
 
-        # Los empleados regulares solo ven lo de su sede asignada
         if user.branch:
             if hasattr(qs.model, 'branch'):
                 return qs.filter(company=company, branch=user.branch)
@@ -49,7 +53,20 @@ class DeliveryRouteViewSet(BaseLogisticsViewSet):
     serializer_class = DeliveryRouteSerializer
 
     def perform_create(self, serializer):
-        serializer.save(company=self.get_company())
+        user = self.request.user
+        company = user.company
+        company_id = self.request.data.get('company')
+        from rest_framework.exceptions import ValidationError
+        
+        if user.is_superuser:
+            if company_id:
+                serializer.save(company_id=company_id)
+            else:
+                raise ValidationError({"detail": "Debes especificar una empresa para esta ruta."})
+        else:
+            if not company:
+                raise ValidationError({"detail": "Tu usuario no tiene una empresa asociada."})
+            serializer.save(company=company)
 
     @action(detail=False, methods=['post'])
     def generate_route(self, request):
@@ -197,14 +214,54 @@ class PurchaseOrderViewSet(BaseLogisticsViewSet):
         return super().get_queryset()
 
     def perform_create(self, serializer):
+        user = self.request.user
+        company = user.company
+        company_id = self.request.data.get('company')
+        from rest_framework.exceptions import ValidationError
+        
+        if user.is_superuser:
+            if company_id:
+                from companies.models import Company
+                try:
+                    company = Company.objects.get(id=company_id)
+                except Company.DoesNotExist:
+                    raise ValidationError({"detail": "La empresa especificada no existe."})
+            else:
+                raise ValidationError({"detail": "Debes especificar una empresa para esta orden."})
+        else:
+            if not company:
+                raise ValidationError({"detail": "Tu usuario no tiene una empresa asociada."})
+            if company_id and int(company_id) != company.id:
+                raise ValidationError({"detail": "No tienes permiso para crear órdenes de compra en otra empresa."})
+
+        # Validar proveedor
+        proveedor = serializer.validated_data.get('proveedor')
+        if proveedor and proveedor.company != company:
+            raise ValidationError({"proveedor": "El proveedor seleccionado no pertenece a tu empresa."})
+
+        # Validar branch
+        branch = serializer.validated_data.get('branch')
+        if branch and branch.company != company:
+            raise ValidationError({"branch": "La sede seleccionada no pertenece a tu empresa."})
+
         order = serializer.save(
-            company=self.get_company(),
-            generada_por=self.request.user
+            company=company,
+            generada_por=user
         )
-        # Crear ítems anidados
+        
+        # Validar ítems de la OC
         items_data = self.request.data.get('items', [])
         for item in items_data:
             producto_id = item.get('producto') or None
+            if producto_id:
+                from inventory.models import Product
+                try:
+                    product = Product.objects.get(id=producto_id)
+                    if product.company != company:
+                        raise ValidationError({"product": f"El producto {product.name} no pertenece a la misma empresa."})
+                except Product.DoesNotExist:
+                    raise ValidationError({"product": f"El producto con ID {producto_id} no existe."})
+                    
             nombre_libre = item.get('producto_nombre_libre') or item.get('producto_nombre') or ''
             PurchaseOrderItem.objects.create(
                 orden=order,

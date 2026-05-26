@@ -30,19 +30,20 @@ User = get_user_model()
 # ============================================
 
 class CompanyViewSet(viewsets.ModelViewSet):
-
     queryset = Company.objects.all()
     serializer_class = CompanySerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-
         user = self.request.user
+        if not user.is_authenticated:
+            return Company.objects.none()
 
-        # ADMIN SuperUser puede ver todas las empresas, branch admins solo su empresa.
-        if user.is_superuser or user.is_staff:
+        # Solo superusuarios ven todas las empresas
+        if user.is_superuser:
             return Company.objects.all()
-        elif getattr(user, "company", None):
+            
+        if getattr(user, "company", None):
             return Company.objects.filter(id=user.company.id)
 
         return Company.objects.none()
@@ -54,22 +55,39 @@ class BranchViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_superuser or user.is_staff:
-            if user.company:
-                return Branch.objects.filter(company=user.company)
+        if not user.is_authenticated:
+            return Branch.objects.none()
+
+        if user.is_superuser:
+            company_id = self.request.query_params.get('company')
+            if company_id:
+                return Branch.objects.filter(company_id=company_id)
             return Branch.objects.all()
+
+        company = getattr(user, 'company', None)
+        if not company:
+            return Branch.objects.none()
+
+        if user.is_staff or getattr(user, 'role', None) == 'ADMIN':
+            return Branch.objects.filter(company=company)
+
         if user.branch:
             return Branch.objects.filter(id=user.branch.id)
+
         return Branch.objects.none()
 
     def perform_create(self, serializer):
         user = self.request.user
         company_id = self.request.data.get('company')
         
-        if company_id and (user.is_staff or getattr(user, "role", None) == "ADMIN"):
+        if company_id and (user.is_superuser or user.is_staff or getattr(user, "role", None) == "ADMIN"):
+            if not user.is_superuser and int(company_id) != user.company.id:
+                raise ValidationError({"detail": "No tienes permiso para crear sedes en otra empresa."})
             branch = serializer.save(company_id=company_id)
             company = branch.company
         else:
+            if not user.is_superuser and not user.company:
+                raise ValidationError({"detail": "Tu usuario no tiene una empresa asociada."})
             company = user.company
             branch = serializer.save(company=company)
         
@@ -89,9 +107,19 @@ class ClientViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = Client.objects.all()
-        if user.company:
-            queryset = queryset.filter(company=user.company)
+        if not user.is_authenticated:
+            return Client.objects.none()
+            
+        if user.is_superuser:
+            queryset = Client.objects.all()
+            company_id = self.request.query_params.get('company')
+            if company_id:
+                queryset = queryset.filter(company_id=company_id)
+        else:
+            company = getattr(user, 'company', None)
+            if not company:
+                return Client.objects.none()
+            queryset = Client.objects.filter(company=company)
             
         search = self.request.query_params.get('search')
         if search:
@@ -114,17 +142,19 @@ class ClientViewSet(viewsets.ModelViewSet):
             
         company = user.company
         
-        # Fallback para ADMINs sin empresa asignada
-        if not company:
-            if user.is_staff or getattr(user, 'role', None) == 'ADMIN':
-                # Intentamos tomar la primera empresa del sistema como fallback
-                first_company = Company.objects.first()
-                if first_company:
-                    company = first_company
-                else:
-                    raise ValidationError({"detail": "No hay empresas creadas en el sistema."})
+        if not company and not user.is_superuser:
+            raise ValidationError({"detail": "Tu usuario no tiene una empresa asociada. Contacta al administrador."})
+            
+        if user.is_superuser:
+            company_id = self.request.data.get('company')
+            if company_id:
+                from .models import Company
+                try:
+                    company = Company.objects.get(id=company_id)
+                except Company.DoesNotExist:
+                    raise ValidationError({"detail": "La empresa especificada no existe."})
             else:
-                raise ValidationError({"detail": "Tu usuario no tiene una empresa asociada. Contacta al administrador."})
+                raise ValidationError({"detail": "Debes especificar una empresa para este cliente."})
             
         try:
             serializer.save(company=company)
@@ -134,6 +164,7 @@ class ClientViewSet(viewsets.ModelViewSet):
             raise ValidationError({"detail": f"Error de integridad: {str(e)}"})
         except Exception as e:
             raise ValidationError({"detail": f"Error inesperado: {str(e)}"})
+
 
 
 # ============================================

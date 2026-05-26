@@ -51,37 +51,63 @@ class EmployeeListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_superuser or user.is_staff:
-            if user.company:
-                return User.objects.filter(company=user.company).order_by('-date_joined')
+        if not user.is_authenticated:
+            return User.objects.none()
+
+        if user.is_superuser:
+            company_id = self.request.query_params.get('company')
+            if company_id:
+                return User.objects.filter(company_id=company_id).order_by('-date_joined')
             return User.objects.all().order_by('-date_joined')
         
-        # Branch Admins solo ven la gente de su Sede (y a sí mismos)
+        company = getattr(user, 'company', None)
+        if not company:
+            return User.objects.none()
+            
+        if user.is_staff:
+            return User.objects.filter(company=company).order_by('-date_joined')
+            
         elif user.is_admin:
             if user.branch:
                 return User.objects.filter(branch=user.branch).order_by('-date_joined')
-            return User.objects.none()
+            return User.objects.filter(company=company).order_by('-date_joined')
             
         elif user.is_jefe_inventario:
-            # Jefe solo puede ver EMPLEADO y VENDEDOR de su sede
-            return User.objects.filter(role__in=[User.EMPLEADO, User.VENDEDOR], branch=user.branch).order_by('-date_joined')
+            if user.branch:
+                return User.objects.filter(role__in=[User.EMPLEADO, User.VENDEDOR], branch=user.branch).order_by('-date_joined')
+            return User.objects.none()
+            
         return User.objects.none()
 
     def create(self, request, *args, **kwargs):
-        if not request.user.is_admin and not request.user.is_jefe_inventario:
+        if not request.user.is_superuser and not request.user.is_staff and not request.user.is_admin and not request.user.is_jefe_inventario:
             return Response({"error": "No tienes permisos para registrar empleados"}, status=status.HTTP_403_FORBIDDEN)
             
         data = request.data.copy()
+        
+        # Forzar la compañía del usuario creador si no es superusuario
+        if not request.user.is_superuser:
+            data['company'] = request.user.company.id if request.user.company else None
+            
         if request.user.is_jefe_inventario:
             data['branch'] = request.user.branch.id if request.user.branch else None
-            # El Jefe puede crear Empleado o Vendedor
             if data.get('role') != User.VENDEDOR:
                 data['role'] = User.EMPLEADO
-        
+                
+        branch_id = data.get('branch')
+        if branch_id and not request.user.is_superuser:
+            from companies.models import Branch
+            try:
+                branch = Branch.objects.get(id=branch_id)
+                if branch.company != request.user.company:
+                    return Response({"error": "La sede no pertenece a tu empresa."}, status=status.HTTP_400_BAD_REQUEST)
+            except Branch.DoesNotExist:
+                return Response({"error": "La sede especificada no existe."}, status=status.HTTP_400_BAD_REQUEST)
+
         serializer = RegisterUserSerializer(data=data)
         if serializer.is_valid():
             user = serializer.save()
-            if request.user.company:
+            if not request.user.is_superuser and request.user.company:
                 user.company = request.user.company
             if request.user.is_jefe_inventario and request.user.branch:
                 user.branch = request.user.branch
@@ -93,20 +119,53 @@ class EmployeeListCreateView(generics.ListCreateAPIView):
 class EmployeeDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = UserSerializer
-    queryset = User.objects.all()
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return User.objects.none()
+            
+        if user.is_superuser:
+            return User.objects.all()
+            
+        company = getattr(user, 'company', None)
+        if not company:
+            return User.objects.none()
+            
+        if user.is_staff or user.is_admin:
+            return User.objects.filter(company=company)
+            
+        elif user.is_jefe_inventario:
+            if user.branch:
+                return User.objects.filter(role__in=[User.EMPLEADO, User.VENDEDOR], branch=user.branch)
+            return User.objects.none()
+            
+        return User.objects.filter(id=user.id)
 
     def update(self, request, *args, **kwargs):
-        if not request.user.is_admin:
+        if not request.user.is_superuser and not request.user.is_staff and not request.user.is_admin:
             return Response({"error": "No tienes permisos para editar empleados"}, status=status.HTTP_403_FORBIDDEN)
-        # Update without password change
+        
         instance = self.get_object()
+        
+        # Validar cambio de branch
+        branch_id = request.data.get('branch')
+        if branch_id and not request.user.is_superuser:
+            from companies.models import Branch
+            try:
+                branch = Branch.objects.get(id=branch_id)
+                if branch.company != request.user.company:
+                    return Response({"error": "La sede no pertenece a tu empresa."}, status=status.HTTP_400_BAD_REQUEST)
+            except Branch.DoesNotExist:
+                return Response({"error": "La sede especificada no existe."}, status=status.HTTP_400_BAD_REQUEST)
+
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return Response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):
-        if not request.user.is_admin:
+        if not request.user.is_superuser and not request.user.is_staff and not request.user.is_admin:
             return Response({"error": "No tienes permisos para eliminar empleados"}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
 

@@ -28,3 +28,16 @@ class IsInventoryManagerOrReadOnly(BasePermission):
             return True
             
         return False
+
+
+class RequiresCompany(BasePermission):
+    """Bloquea acceso si el usuario no tiene empresa asignada (excepto superusuarios)."""
+    message = "Tu cuenta no tiene una empresa asignada. Contacta al administrador."
+    
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser:
+            return True
+        return bool(getattr(request.user, 'company', None))
+

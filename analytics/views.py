@@ -14,7 +14,23 @@ class DashboardSummaryAPIView(APIView):
     Returns high-level KPIs for the main dashboard cards.
     """
     def get(self, request):
-        company = request.user.company
+        user = request.user
+        company = user.company
+        if user.is_superuser:
+            company_id = request.query_params.get('company')
+            if company_id:
+                from companies.models import Company
+                try:
+                    company = Company.objects.get(id=company_id)
+                except Company.DoesNotExist:
+                    return Response({"detail": "La empresa especificada no existe."}, status=400)
+            else:
+                from companies.models import Company
+                company = Company.objects.first()
+
+        if not company:
+            return Response({"detail": "Tu usuario no tiene una empresa asociada."}, status=status.HTTP_400_BAD_REQUEST)
+
         branch_id = request.query_params.get('branch')
         category_id = request.query_params.get('category')
         start_date = request.query_params.get('startDate')
@@ -37,7 +53,23 @@ class AlertsAPIView(APIView):
     Returns AI-driven inventory alerts and recommendations.
     """
     def get(self, request):
-        company = request.user.company
+        user = request.user
+        company = user.company
+        if user.is_superuser:
+            company_id = request.query_params.get('company')
+            if company_id:
+                from companies.models import Company
+                try:
+                    company = Company.objects.get(id=company_id)
+                except Company.DoesNotExist:
+                    return Response({"detail": "La empresa especificada no existe."}, status=400)
+            else:
+                from companies.models import Company
+                company = Company.objects.first()
+
+        if not company:
+            return Response({"detail": "Tu usuario no tiene una empresa asociada."}, status=status.HTTP_400_BAD_REQUEST)
+
         branch_id = request.query_params.get('branch')
         category_id = request.query_params.get('category')
         
@@ -55,7 +87,23 @@ class ChartDataAPIView(APIView):
     Returns data formatted for Recharts.
     """
     def get(self, request):
-        company = request.user.company
+        user = request.user
+        company = user.company
+        if user.is_superuser:
+            company_id = request.query_params.get('company')
+            if company_id:
+                from companies.models import Company
+                try:
+                    company = Company.objects.get(id=company_id)
+                except Company.DoesNotExist:
+                    return Response({"detail": "La empresa especificada no existe."}, status=400)
+            else:
+                from companies.models import Company
+                company = Company.objects.first()
+
+        if not company:
+            return Response({"detail": "Tu usuario no tiene una empresa asociada."}, status=status.HTTP_400_BAD_REQUEST)
+
         branch_id = request.query_params.get('branch')
         category_id = request.query_params.get('category')
         start_date = request.query_params.get('startDate')
@@ -77,8 +125,33 @@ class SimulationAPIView(APIView):
     Endpoint for What-if scenario analysis.
     """
     def post(self, request):
+        user = request.user
+        company = user.company
+        if user.is_superuser:
+            company_id = request.data.get('company')
+            if company_id:
+                from companies.models import Company
+                try:
+                    company = Company.objects.get(id=company_id)
+                except Company.DoesNotExist:
+                    return Response({"detail": "La empresa especificada no existe."}, status=400)
+            else:
+                from companies.models import Company
+                company = Company.objects.first()
+
+        if not company:
+            return Response({"detail": "Tu usuario no tiene una empresa asociada."}, status=status.HTTP_400_BAD_REQUEST)
+            
         serializer = SimulationSerializer(data=request.data)
         if serializer.is_valid():
+            # Validar que el producto pertenezca a la misma compañía
+            try:
+                product = Product.objects.get(id=serializer.validated_data['product_id'])
+                if product.company != company:
+                    return Response({"detail": "No tienes permiso para acceder a este producto."}, status=403)
+            except Product.DoesNotExist:
+                return Response({"detail": "Producto no encontrado."}, status=404)
+                
             res = SimulationService.simulate_stock_change(
                 serializer.validated_data['product_id'],
                 serializer.validated_data['stock_delta']
@@ -122,6 +195,21 @@ class ExportAPIView(APIView):
              return Response({"detail": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
 
         company = user.company
+        if user.is_superuser:
+            company_id = request.query_params.get('company')
+            if company_id:
+                from companies.models import Company
+                try:
+                    company = Company.objects.get(id=company_id)
+                except Company.DoesNotExist:
+                    return Response({"detail": "La empresa especificada no existe."}, status=400)
+            else:
+                from companies.models import Company
+                company = Company.objects.first()
+
+        if not company:
+            return Response({"detail": "Tu usuario no tiene una empresa asociada."}, status=status.HTTP_400_BAD_REQUEST)
+
         branch = Branch.objects.filter(id=branch_id, company=company).first() if branch_id else None
         
         # Fetch data to export with all filters

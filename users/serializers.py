@@ -9,10 +9,11 @@ class UserSerializer(serializers.ModelSerializer):
     assigned_by_name = serializers.SerializerMethodField()
     position_display = serializers.CharField(source='get_position_display', read_only=True)
     branch_name = serializers.ReadOnlyField(source='branch.name')
+    company_name = serializers.ReadOnlyField(source='company.name')
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role', 'company', 'branch', 'branch_name', 'cedula', 'position', 'position_display', 'assigned_by', 'assigned_by_name')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role', 'company', 'company_name', 'branch', 'branch_name', 'cedula', 'position', 'position_display', 'assigned_by', 'assigned_by_name')
         read_only_fields = ('id', 'assigned_by_name')
 
     def get_assigned_by_name(self, obj):

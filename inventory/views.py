@@ -16,11 +16,16 @@ class CategoryViewSet(BaseInventoryViewSet):
     serializer_class = CategorySerializer
 
     def perform_create(self, serializer):
+        user = self.request.user
+        company = user.company
         company_id = self.request.data.get('company')
-        company = self.request.user.company
-        if company_id and (self.request.user.is_staff or getattr(self.request.user, 'is_admin', False)):
+        from rest_framework.exceptions import ValidationError
+        
+        if company_id and user.is_superuser:
             serializer.save(company_id=company_id)
         else:
+            if not user.is_superuser and not company:
+                raise ValidationError({"detail": "Tu usuario no tiene una empresa asociada."})
             serializer.save(company=company)
 
 class ProviderViewSet(BaseInventoryViewSet):
@@ -28,11 +33,16 @@ class ProviderViewSet(BaseInventoryViewSet):
     serializer_class = ProviderSerializer
 
     def perform_create(self, serializer):
+        user = self.request.user
+        company = user.company
         company_id = self.request.data.get('company')
-        company = self.request.user.company
-        if company_id and (self.request.user.is_staff or getattr(self.request.user, 'is_admin', False)):
+        from rest_framework.exceptions import ValidationError
+        
+        if company_id and user.is_superuser:
             serializer.save(company_id=company_id)
         else:
+            if not user.is_superuser and not company:
+                raise ValidationError({"detail": "Tu usuario no tiene una empresa asociada."})
             serializer.save(company=company)
 
     @action(detail=False, methods=['post'], url_path='ensure_brand')
@@ -71,22 +81,37 @@ class ProductViewSet(BaseInventoryViewSet):
     serializer_class = ProductSerializer
 
     def perform_create(self, serializer):
+        user = self.request.user
+        company = user.company
         company_id = self.request.data.get('company')
-        company = self.request.user.company
+        from rest_framework.exceptions import ValidationError
         
         # Determine effective company
-        effective_company_id = company_id if (company_id and (self.request.user.is_staff or getattr(self.request.user, 'is_admin', False))) else (company.id if company else None)
-        
+        if user.is_superuser:
+            effective_company_id = company_id if company_id else (company.id if company else None)
+        else:
+            if not company:
+                raise ValidationError({"detail": "Tu usuario no tiene una empresa asociada."})
+            if company_id and int(company_id) != company.id:
+                raise ValidationError({"detail": "No tienes permisos para crear productos en otra empresa."})
+            effective_company_id = company.id
+            
         # Validate unique SKU per company
         sku = serializer.validated_data.get('sku')
         if Product.objects.filter(sku=sku, company_id=effective_company_id).exists():
-            from rest_framework.exceptions import ValidationError
             raise ValidationError({"sku": "Ya existe un producto con este SKU en la empresa."})
 
-        if company_id and (self.request.user.is_staff or getattr(self.request.user, 'is_admin', False)):
-            product = serializer.save(company_id=company_id)
-        else:
-            product = serializer.save(company=company)
+        # Validate that category/providers belong to the same company
+        category = serializer.validated_data.get('category')
+        if category and category.company_id != effective_company_id:
+            raise ValidationError({"category": "La categoría no pertenece a la misma empresa."})
+            
+        providers = serializer.validated_data.get('providers', [])
+        for provider in providers:
+            if provider.company_id != effective_company_id:
+                raise ValidationError({"providers": f"El proveedor {provider.name} no pertenece a la misma empresa."})
+
+        product = serializer.save(company_id=effective_company_id)
 
         # Crear registros de Inventario correctamente a través de Warehouse
         from companies.models import Branch
@@ -251,6 +276,7 @@ class StockMovementViewSet(BaseInventoryViewSet):
         company_id = self.request.data.get('company')
         user = self.request.user
         company = user.company
+        from rest_framework.exceptions import ValidationError
         
         # Un movimiento manual de stock requiere definir warehouse
         warehouse = serializer.validated_data.get('warehouse')
@@ -259,10 +285,20 @@ class StockMovementViewSet(BaseInventoryViewSet):
             if inventory:
                 warehouse = inventory.warehouse
         
-        if company_id and (user.is_superuser or user.is_staff):
-            stock_movement = serializer.save(user=user, company_id=company_id, warehouse=warehouse)
+        if user.is_superuser:
+            effective_company_id = company_id if company_id else (company.id if company else None)
         else:
-            stock_movement = serializer.save(user=user, company=company, warehouse=warehouse)
+            if not company:
+                raise ValidationError({"detail": "Tu usuario no tiene una empresa asociada."})
+            if company_id and int(company_id) != company.id:
+                raise ValidationError({"detail": "No tienes permiso para registrar movimientos de stock en otra empresa."})
+            effective_company_id = company.id
+            
+        # Validar que el almacén pertenezca a la misma compañía
+        if warehouse and warehouse.branch.company_id != effective_company_id:
+            raise ValidationError({"warehouse": "El almacén no pertenece a la misma empresa."})
+
+        stock_movement = serializer.save(user=user, company_id=effective_company_id, warehouse=warehouse)
         
         inventory = stock_movement.inventory
         
@@ -294,15 +330,42 @@ class OrderViewSet(BaseInventoryViewSet):
         return qs
 
     def perform_create(self, serializer):
-        company = self.request.user.company
         user = self.request.user
-        branch_id = self.request.data.get('branch')
+        company = user.company
+        company_id = self.request.data.get('company')
+        from rest_framework.exceptions import ValidationError
         
-        # If Admin or Jefe creates it, starts APPROVED
-        if user.role in ['ADMIN', 'JEFE_INVENTARIO'] or user.is_staff:
-            order = serializer.save(company=company, created_by=user, status='APPROVED', approved_by=user, branch_id=branch_id)
+        if user.is_superuser:
+            if company_id:
+                from companies.models import Company
+                try:
+                    company = Company.objects.get(id=company_id)
+                except Company.DoesNotExist:
+                    raise ValidationError({"detail": "La empresa especificada no existe."})
+            else:
+                raise ValidationError({"detail": "Debes especificar una empresa para este pedido."})
         else:
-            order = serializer.save(company=company, created_by=user, status='PENDING_APPROVAL', branch_id=branch_id)
+            if not company:
+                raise ValidationError({"detail": "Tu usuario no tiene una empresa asociada."})
+            if company_id and int(company_id) != company.id:
+                raise ValidationError({"detail": "No tienes permiso para crear pedidos en otra empresa."})
+                
+        branch_id = self.request.data.get('branch')
+        if branch_id:
+            from companies.models import Branch
+            try:
+                branch = Branch.objects.get(id=branch_id)
+                if branch.company != company:
+                    raise ValidationError({"branch": "La sede seleccionada no pertenece a la misma empresa."})
+            except Branch.DoesNotExist:
+                raise ValidationError({"branch": "La sede especificada no existe."})
+
+        # If Admin or Jefe creates it, starts APPROVED
+        is_manager = user.role in ['ADMIN', 'JEFE_INVENTARIO'] or user.is_staff
+        status = 'APPROVED' if is_manager else 'PENDING_APPROVAL'
+        approved_by = user if is_manager else None
+        
+        order = serializer.save(company=company, created_by=user, status=status, approved_by=approved_by, branch_id=branch_id)
             
         # Create items from requested data
         items_data = self.request.data.get('items', [])
@@ -310,6 +373,14 @@ class OrderViewSet(BaseInventoryViewSet):
             product_id = item.get('product')
             qty = item.get('requested_quantity')
             if product_id and qty:
+                # Validar que el producto pertenezca a la misma compañía
+                from .models import Product
+                try:
+                    product = Product.objects.get(id=product_id)
+                    if product.company != company:
+                        raise ValidationError({"product": f"El producto {product.name} no pertenece a la misma empresa."})
+                except Product.DoesNotExist:
+                    raise ValidationError({"product": f"El producto con ID {product_id} no existe."})
                 OrderItem.objects.create(order=order, product_id=product_id, requested_quantity=qty)
 
         # If it was created as APPROVED, create the Delivery Route
@@ -453,19 +524,33 @@ class SaleViewSet(BaseInventoryViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         branch = user.branch
+        from rest_framework.exceptions import ValidationError
 
         if not branch:
             branch_id = self.request.data.get('branch')
             if branch_id:
                 from companies.models import Branch
-                if user.is_superuser or user.is_staff:
+                if user.is_superuser:
                     branch = Branch.objects.filter(id=branch_id).first()
                 else:
+                    if not user.company:
+                        raise ValidationError({"detail": "Tu usuario no tiene una empresa asociada."})
                     branch = Branch.objects.filter(id=branch_id, company=user.company).first()
 
-        from rest_framework.exceptions import ValidationError
         if not branch:
             raise ValidationError("No tienes una sede asignada para realizar ventas o no seleccionaste ninguna.")
+            
+        # Validate that each product belongs to the branch company
+        items_data = self.request.data.get('items', [])
+        for item in items_data:
+            product_id = item.get('product')
+            if product_id:
+                try:
+                    product = Product.objects.get(id=product_id)
+                    if product.company != branch.company:
+                        raise ValidationError({"product": f"El producto {product.name} no pertenece a la empresa de la sede."})
+                except Product.DoesNotExist:
+                    raise ValidationError({"product": f"El producto con ID {product_id} no existe."})
             
         status = self.request.data.get('status', 'COMPLETED')
         invoice_type = self.request.data.get('invoice_type', 'FISICA')
@@ -631,17 +716,39 @@ class InventoryEntryViewSet(BaseInventoryViewSet):
         user = self.request.user
         company = user.company
         branch = user.branch
+        from rest_framework.exceptions import ValidationError
+        
+        company_id = self.request.data.get('company')
+        if user.is_superuser:
+            effective_company_id = company_id if company_id else (company.id if company else None)
+        else:
+            if not company:
+                raise ValidationError({"detail": "Tu usuario no tiene una empresa asociada."})
+            if company_id and int(company_id) != company.id:
+                raise ValidationError({"detail": "No tienes permiso para registrar entradas en otra empresa."})
+            effective_company_id = company.id
+
         if not branch:
             branch_id = self.request.data.get('branch')
             if branch_id:
                 from companies.models import Branch
-                if user.is_superuser or user.is_staff:
+                if user.is_superuser:
                     branch = Branch.objects.filter(id=branch_id).first()
                 else:
-                    branch = Branch.objects.filter(id=branch_id, company=user.company).first()
+                    branch = Branch.objects.filter(id=branch_id, company_id=effective_company_id).first()
 
-        company_id = self.request.data.get('company')
-        effective_company_id = company_id if (company_id and (user.is_superuser or user.is_staff)) else (company.id if company else None)
+        # Validar branch
+        if branch and branch.company_id != effective_company_id:
+            raise ValidationError({"branch": "La sede seleccionada no pertenece a la misma empresa."})
+
+        # Validar que el producto y proveedor pertenezcan a la misma compañía
+        product = serializer.validated_data.get('product')
+        if product and product.company_id != effective_company_id:
+            raise ValidationError({"product": "El producto no pertenece a la misma empresa."})
+            
+        provider = serializer.validated_data.get('provider')
+        if provider and provider.company_id != effective_company_id:
+            raise ValidationError({"provider": "El proveedor no pertenece a la misma empresa."})
 
         entry = serializer.save(user=user, company_id=effective_company_id, branch=branch)
         

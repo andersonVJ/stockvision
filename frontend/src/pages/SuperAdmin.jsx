@@ -186,7 +186,10 @@ export default function SuperAdmin() {
 
   // ─── HELPERS ───────────────────────────────────
   const getCompanyBranches = (companyId) => branches.filter(b => b.company === companyId);
-  const getCompanyEmployees = (companyId) => employees.filter(e => e.company === companyId);
+  const getCompanyEmployees = (companyId) => {
+    const companyBranches = getCompanyBranches(companyId).map(b => String(b.id));
+    return employees.filter(e => String(e.company) === String(companyId) || companyBranches.includes(String(e.branch)));
+  };
   const getBranchEmployees = (branchId) => employees.filter(e => e.branch === branchId);
 
   const getRoleBadge = (role) => {

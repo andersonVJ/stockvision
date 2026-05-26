@@ -359,7 +359,7 @@ export default function Inventario() {
                           <div key={product.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow flex flex-col group relative">
                             <div className="h-48 bg-slate-100 relative overflow-hidden flex items-center justify-center">
                               {product.image ? (
-                                <img src={product.image} alt={product.name} className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500 mix-blend-multiply" />
+                                <img src={product.image?.replace(/^https?:\/\/[^\/]+/, '')} alt={product.name} className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500 mix-blend-multiply" />
                               ) : (
                                 <span className="text-slate-300 font-bold text-lg px-6 text-center">{product.name}</span>
                               )}
@@ -416,7 +416,7 @@ export default function Inventario() {
                                 <td className="px-6 py-4">
                                   <div className="flex items-center gap-3">
                                     {product.image ? (
-                                      <img src={typeof product.image === 'string' && product.image.startsWith('http') ? product.image : `${product.image}`} alt={product.name} className="w-10 h-10 rounded-lg object-contain bg-slate-100 p-1 mix-blend-multiply" />
+                                      <img src={typeof product.image === 'string' ? product.image.replace(/^https?:\/\/[^\/]+/, '') : ''} alt={product.name} className="w-10 h-10 rounded-lg object-contain bg-slate-100 p-1 mix-blend-multiply" />
                                     ) : (
                                       <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 shrink-0"></div>
                                     )}

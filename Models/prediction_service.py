@@ -61,10 +61,8 @@ class PredictionService:
             prophet_loaded = prophet.load_model()
 
             if not prophet_loaded:
-
-                raise Exception(
-                    "Prophet model not found."
-                )
+                model_logger.warning("Prophet model not found. Using zero-forecast fallback.")
+                prophet.model = {} # Fallback to empty dict to prevent crash in loop
 
             # ==========================================
             # LOAD XGBOOST

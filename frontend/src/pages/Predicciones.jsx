@@ -223,7 +223,7 @@ export default function Predicciones() {
                                         <div className="flex items-center gap-4 mb-4">
                                             {pred.image ? (
                                                 <img
-                                                    src={`http://127.0.0.1:8000${pred.image}`}
+                                                    src={`${pred.image}`}
                                                     alt={pred.product_name}
                                                     className="w-16 h-16 object-cover rounded-xl shadow-md border border-white/50 bg-white"
                                                 />

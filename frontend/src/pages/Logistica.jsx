@@ -51,7 +51,7 @@ const supplierIcon = L.divIcon({
     popupAnchor: [0, -36],
 });
 
-const API = "http://127.0.0.1:8000/api/logistics";
+const API = "/api/logistics";
 
 function getAuthHeaders() {
     const tokens = JSON.parse(localStorage.getItem("tokens") || "{}");

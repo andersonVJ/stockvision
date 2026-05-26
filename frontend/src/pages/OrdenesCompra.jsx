@@ -11,8 +11,8 @@ import axios from "axios";
 import { getOrders, createOrder, approveOrder, deliverOrder, rejectOrder } from "../services/orderService";
 import { getProducts, getBranches, getProviders } from "../services/inventoryService";
 
-const API_LOGISTICS = "http://127.0.0.1:8000/api/logistics";
-const API_INVENTORY = "http://127.0.0.1:8000/api/inventory";
+const API_LOGISTICS = "/api/logistics";
+const API_INVENTORY = "/api/inventory";
 
 function getAuthHeaders() {
     const tokens = JSON.parse(localStorage.getItem("tokens") || "{}");
@@ -299,7 +299,7 @@ export default function OrdenesCompra() {
     }, []);
 
     const fetchSedes = useCallback(async () => {
-        try { const r = await axios.get(`http://127.0.0.1:8000/api/companies/branches/`, { headers: getAuthHeaders() }); setSedes(r.data); } catch {}
+        try { const r = await axios.get(`/api/companies/branches/`, { headers: getAuthHeaders() }); setSedes(r.data); } catch {}
     }, []);
 
     useEffect(() => {

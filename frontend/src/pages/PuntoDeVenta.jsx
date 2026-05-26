@@ -256,7 +256,7 @@ export default function PuntoDeVenta() {
                       <div>
                         <div className="h-16 w-full mb-2 rounded-md overflow-hidden bg-slate-100 flex items-center justify-center p-1 relative">
                           {inv.product_image ? (
-                             <img src={inv.product_image.startsWith('http') ? inv.product_image : `http://127.0.0.1:8000${inv.product_image}`} alt={inv.product_name} className="w-full h-full object-contain mix-blend-multiply" />
+                             <img src={inv.product_image.startsWith('http') ? inv.product_image : `${inv.product_image}`} alt={inv.product_name} className="w-full h-full object-contain mix-blend-multiply" />
                           ) : (
                              <span className="text-slate-300 font-bold text-[10px]">Sin Foto</span>
                           )}

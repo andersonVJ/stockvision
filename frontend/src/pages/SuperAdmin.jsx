@@ -191,7 +191,7 @@ export default function SuperAdmin() {
 
   const getRoleBadge = (role) => {
     const map = {
-      ADMIN: "bg-purple-100 text-purple-700",
+      ADMIN: "bg-purple-100 text-blue-700",
       JEFE_INVENTARIO: "bg-blue-100 text-blue-700",
       EMPLEADO: "bg-slate-100 text-slate-600",
       VENDEDOR: "bg-green-100 text-green-700",
@@ -230,7 +230,7 @@ export default function SuperAdmin() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
               <h1 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl text-white">
+                <div className="p-2 bg-gradient-to-br bg-blue-600 rounded-xl text-white">
                   <Shield className="w-6 h-6" />
                 </div>
                 Panel SuperAdmin
@@ -239,7 +239,7 @@ export default function SuperAdmin() {
             </div>
             <button
               onClick={() => { resetCompanyForm(); setShowCompanyModal(true); }}
-              className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg shadow-indigo-200 hover:shadow-indigo-300"
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg shadow-blue-200 hover:shadow-blue-300"
             >
               <Plus className="w-4 h-4" /> Nueva Empresa
             </button>
@@ -249,7 +249,7 @@ export default function SuperAdmin() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
             <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-indigo-50 rounded-xl"><Building2 className="w-5 h-5 text-indigo-600" /></div>
+                <div className="p-2.5 bg-blue-50 rounded-xl"><Building2 className="w-5 h-5 text-blue-600" /></div>
                 <div>
                   <p className="text-2xl font-bold text-slate-800">{companies.length}</p>
                   <p className="text-xs text-slate-400 font-medium">Empresas</p>
@@ -299,7 +299,7 @@ export default function SuperAdmin() {
                       onClick={() => setExpandedCompany(isExpanded ? null : company.id)}
                     >
                       <div className="flex items-center gap-4">
-                        <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl text-white shrink-0">
+                        <div className="p-2.5 bg-gradient-to-br bg-blue-600 rounded-xl text-white shrink-0">
                           <Building2 className="w-5 h-5" />
                         </div>
                         <div>
@@ -348,7 +348,7 @@ export default function SuperAdmin() {
                               });
                               setShowAdminModal(true);
                             }}
-                            className="flex items-center gap-1.5 text-xs font-medium text-purple-600 bg-purple-50 border border-purple-200 px-3 py-1.5 rounded-lg hover:bg-purple-100 transition-colors"
+                            className="flex items-center gap-1.5 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
                           >
                             <UserPlus className="w-3 h-3" /> Asignar Admin
                           </button>
@@ -440,14 +440,14 @@ export default function SuperAdmin() {
 
                         {/* Admins summary */}
                         {admins.length > 0 && (
-                          <div className="mt-3 bg-purple-50 rounded-xl border border-purple-200 px-4 py-3">
-                            <p className="text-xs font-semibold text-purple-700 mb-1">
+                          <div className="mt-3 bg-blue-50 rounded-xl border border-blue-200 px-4 py-3">
+                            <p className="text-xs font-semibold text-blue-700 mb-1">
                               <Shield className="w-3 h-3 inline mr-1" />
                               Administradores de esta empresa ({admins.length})
                             </p>
                             <div className="flex flex-wrap gap-2 mt-1">
                               {admins.map(a => (
-                                <span key={a.id} className="text-xs bg-white text-purple-700 px-2 py-0.5 rounded-full border border-purple-200 font-medium">
+                                <span key={a.id} className="text-xs bg-white text-blue-700 px-2 py-0.5 rounded-full border border-blue-200 font-medium">
                                   {a.first_name} {a.last_name} — {a.branch_name || "Sin sede"}
                                 </span>
                               ))}
@@ -468,7 +468,7 @@ export default function SuperAdmin() {
       {showCompanyModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex items-center justify-between">
               <h2 className="text-lg font-bold text-white">{isEditing ? "Editar Empresa" : "Nueva Empresa"}</h2>
               <button onClick={() => { setShowCompanyModal(false); resetCompanyForm(); }} className="text-white/70 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
@@ -499,7 +499,7 @@ export default function SuperAdmin() {
                 <button type="button" onClick={() => { setShowCompanyModal(false); resetCompanyForm(); }}
                   className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors">Cancelar</button>
                 <button type="submit"
-                  className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all font-medium">
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all font-medium">
                   {isEditing ? "Guardar Cambios" : "Crear Empresa"}
                 </button>
               </div>
@@ -512,7 +512,7 @@ export default function SuperAdmin() {
       {showBranchModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-4 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex items-center justify-between">
               <h2 className="text-lg font-bold text-white">Nueva Sede</h2>
               <button onClick={() => setShowBranchModal(false)} className="text-white/70 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
@@ -537,7 +537,7 @@ export default function SuperAdmin() {
                 <button type="button" onClick={() => setShowBranchModal(false)}
                   className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors">Cancelar</button>
                 <button type="submit"
-                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-all font-medium">
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-medium">
                   Crear Sede
                 </button>
               </div>
@@ -550,12 +550,12 @@ export default function SuperAdmin() {
       {showAdminModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-            <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 flex items-center justify-between sticky top-0">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex items-center justify-between sticky top-0">
               <h2 className="text-lg font-bold text-white">Crear Administrador</h2>
               <button onClick={() => setShowAdminModal(false)} className="text-white/70 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleAdminSubmit} className="p-6 space-y-4">
-              <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 text-xs text-purple-700">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-700">
                 <Shield className="w-3.5 h-3.5 inline mr-1" />
                 Este usuario será <strong>Administrador</strong> de la empresa: <strong>{companies.find(c => c.id === adminForm.company)?.name}</strong>
               </div>
@@ -564,12 +564,12 @@ export default function SuperAdmin() {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Nombre *</label>
                   <input required type="text" value={adminForm.first_name} onChange={e => setAdminForm({...adminForm, first_name: e.target.value})}
-                    className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-purple-500" placeholder="Carlos" />
+                    className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500" placeholder="Carlos" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Apellido *</label>
                   <input required type="text" value={adminForm.last_name} onChange={e => setAdminForm({...adminForm, last_name: e.target.value})}
-                    className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-purple-500" placeholder="Pérez" />
+                    className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500" placeholder="Pérez" />
                 </div>
               </div>
 
@@ -577,25 +577,25 @@ export default function SuperAdmin() {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Usuario *</label>
                   <input required type="text" value={adminForm.username} onChange={e => setAdminForm({...adminForm, username: e.target.value})}
-                    className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-purple-500" placeholder="admin_empresa" />
+                    className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500" placeholder="admin_empresa" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Cédula</label>
                   <input type="text" value={adminForm.cedula} onChange={e => setAdminForm({...adminForm, cedula: e.target.value})}
-                    className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-purple-500" placeholder="1234567890" />
+                    className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500" placeholder="1234567890" />
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>
                 <input required type="email" value={adminForm.email} onChange={e => setAdminForm({...adminForm, email: e.target.value})}
-                  className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-purple-500" placeholder="admin@empresa.com" />
+                  className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500" placeholder="admin@empresa.com" />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Rol</label>
                 <select value={adminForm.role} onChange={e => setAdminForm({...adminForm, role: e.target.value})}
-                  className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-purple-500">
+                  className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="ADMIN">Administrador</option>
                   <option value="JEFE_INVENTARIO">Jefe de Inventario</option>
                   <option value="EMPLEADO">Empleado</option>
@@ -606,7 +606,7 @@ export default function SuperAdmin() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Sede *</label>
                 <select required value={adminForm.branch} onChange={e => setAdminForm({...adminForm, branch: e.target.value})}
-                  className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-purple-500">
+                  className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">Seleccionar Sede</option>
                   {getCompanyBranches(adminForm.company).map(b => (
                     <option key={b.id} value={b.id}>{b.name}</option>
@@ -621,12 +621,12 @@ export default function SuperAdmin() {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Contraseña *</label>
                   <input required type="password" value={adminForm.password} onChange={e => setAdminForm({...adminForm, password: e.target.value})}
-                    className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-purple-500" placeholder="••••••••" />
+                    className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500" placeholder="••••••••" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Confirmar *</label>
                   <input required type="password" value={adminForm.password_confirm} onChange={e => setAdminForm({...adminForm, password_confirm: e.target.value})}
-                    className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-purple-500" placeholder="••••••••" />
+                    className="w-full border border-slate-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500" placeholder="••••••••" />
                 </div>
               </div>
 
@@ -634,7 +634,7 @@ export default function SuperAdmin() {
                 <button type="button" onClick={() => setShowAdminModal(false)}
                   className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors">Cancelar</button>
                 <button type="submit"
-                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all font-medium">
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-medium">
                   Crear Administrador
                 </button>
               </div>

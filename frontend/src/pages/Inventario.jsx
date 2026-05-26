@@ -407,7 +407,7 @@ export default function Inventario() {
                                 <td className="px-6 py-4">
                                   <div className="flex items-center gap-3">
                                     {product.image ? (
-                                      <img src={typeof product.image === 'string' && product.image.startsWith('http') ? product.image : `http://127.0.0.1:8000${product.image}`} alt={product.name} className="w-10 h-10 rounded-lg object-contain bg-slate-100 p-1 mix-blend-multiply" />
+                                      <img src={typeof product.image === 'string' && product.image.startsWith('http') ? product.image : `${product.image}`} alt={product.name} className="w-10 h-10 rounded-lg object-contain bg-slate-100 p-1 mix-blend-multiply" />
                                     ) : (
                                       <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 shrink-0"></div>
                                     )}

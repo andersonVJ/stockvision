@@ -47,7 +47,7 @@ export default function GestionEmpleados() {
       setLoading(true);
       const tokens = JSON.parse(localStorage.getItem("tokens") || "{}");
 
-      const res = await fetch("http://127.0.0.1:8000/api/users/employees/", {
+      const res = await fetch("/api/users/employees/", {
         headers: {
           Authorization: `Bearer ${tokens.access}`
         }
@@ -74,7 +74,7 @@ export default function GestionEmpleados() {
     try {
       const tokens = JSON.parse(localStorage.getItem("tokens") || "{}");
       const res = await fetch(
-        `http://127.0.0.1:8000/api/users/employees/${id}/`,
+        `/api/users/employees/${id}/`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${tokens.access}` }
@@ -99,7 +99,7 @@ export default function GestionEmpleados() {
       const tokens = JSON.parse(localStorage.getItem("tokens") || "{}");
 
       const res = await fetch(
-        `http://127.0.0.1:8000/api/users/employees/${id}/assign-position/`,
+        `/api/users/employees/${id}/assign-position/`,
         {
           method: "PATCH",
           headers: {
@@ -134,8 +134,8 @@ export default function GestionEmpleados() {
       const tokens = JSON.parse(localStorage.getItem("tokens") || "{}");
 
       const url = editingEmployee
-        ? `http://127.0.0.1:8000/api/users/employees/${editingEmployee}/`
-        : "http://127.0.0.1:8000/api/users/employees/";
+        ? `/api/users/employees/${editingEmployee}/`
+        : "/api/users/employees/";
 
       const method = editingEmployee ? "PUT" : "POST";
 

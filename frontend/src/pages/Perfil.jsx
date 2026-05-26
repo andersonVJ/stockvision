@@ -38,7 +38,7 @@ export default function Perfil() {
     
     try {
       const tokens = JSON.parse(localStorage.getItem("tokens") || "{}");
-      const res = await fetch("http://127.0.0.1:8000/api/users/profile/", {
+      const res = await fetch("/api/users/profile/", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

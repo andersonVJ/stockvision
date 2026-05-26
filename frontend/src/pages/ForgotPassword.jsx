@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import BASE_API_URL from "../config/apiConfig";
 import Logo from "../components/Logo";
 import { useNavigate } from "react-router-dom";
 
@@ -19,11 +19,7 @@ export default function ForgotPassword() {
 
     try {
 
-      await axios.post(
-        "http://127.0.0.1:8000/api/companies/password-reset/",
-        { email }
-      );
-
+      await axios.post(`${BASE_API_URL}/api/companies/password-reset/`, { email })
       setSuccess(true);
 
     } catch (err) {

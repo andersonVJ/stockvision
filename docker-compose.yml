@@ -75,16 +75,35 @@ services:
     restart: unless-stopped
     networks:
       - stockvision_net
-    ports:
-      - "8080:80"   # ← debe ser 8080, no 80
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.stockvision.rule=Host(`app.stockvision.site`)"
+      - "traefik.http.routers.stockvision.entrypoints=web"
+      - "traefik.http.services.stockvision.loadbalancer.server.port=80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - static_files:/app/staticfiles:ro
       - media_files:/app/media:ro
-      - ./media:/app/media:ro  # Montar media local
+      - ./media:/app/media:ro
     depends_on:
       - backend
       - frontend
+
+  # --- Traefik Reverse Proxy ---
+  traefik:
+    image: traefik:v2.11
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - stockvision_net
+    restart: unless-stopped
 
 volumes:
   postgres_data:

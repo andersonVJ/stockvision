@@ -4,6 +4,7 @@ import Logo from "../components/Logo";
 import { getClients, createClient, updateClient, deleteClient } from "../services/clientService";
 import { getSalesByClient, sendInvoiceEmail } from "../services/inventoryService";
 import { Users, Search, Plus, Edit2, Trash2, Mail, Phone, Hash, History, X, Send, CheckCircle } from "lucide-react";
+import Swal from "sweetalert2";
 
 export default function Clientes() {
   const [clients, setClients] = useState([]);
@@ -80,18 +81,46 @@ export default function Clientes() {
     } catch (error) {
       console.error("Error saving client:", error);
       const serverMsg = error.response?.data ? JSON.stringify(error.response.data) : "Hubo un error al guardar el cliente.";
-      alert(`Error al guardar: ${serverMsg}`);
+      Swal.fire({
+        icon: "error",
+        title: "Error al guardar",
+        text: serverMsg,
+        confirmButtonColor: "#4f46e5"
+      });
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("¿Estás seguro de que deseas eliminar este cliente?")) {
+    const result = await Swal.fire({
+      title: "¿Estás seguro?",
+      text: "Esta acción eliminará el cliente y no se puede deshacer.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#94a3b8",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar"
+    });
+    
+    if (result.isConfirmed) {
       try {
         await deleteClient(id);
         fetchClients();
+        Swal.fire({
+          icon: "success",
+          title: "Eliminado",
+          text: "El cliente ha sido eliminado.",
+          timer: 2000,
+          showConfirmButton: false
+        });
       } catch (error) {
         console.error("Error deleting client:", error);
-        alert("Hubo un error al eliminar el cliente.");
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "Hubo un error al eliminar el cliente.",
+          confirmButtonColor: "#4f46e5"
+        });
       }
     }
   };
@@ -114,11 +143,23 @@ export default function Clientes() {
     setSendingEmail(saleId);
     try {
       await sendInvoiceEmail(saleId, clientEmail);
-      alert("Factura enviada correctamente al correo del cliente.");
+      Swal.fire({
+        icon: "success",
+        title: "¡Factura Enviada!",
+        text: "La factura ha sido enviada correctamente al correo del cliente.",
+        confirmButtonColor: "#4f46e5",
+        timer: 3000,
+        timerProgressBar: true
+      });
     } catch (error) {
       console.error("Error sending email:", error);
       const serverMsg = error.response?.data?.error || "Error desconocido en el servidor.";
-      alert(`Error al enviar el correo: ${serverMsg}`);
+      Swal.fire({
+        icon: "error",
+        title: "Error de envío",
+        text: serverMsg,
+        confirmButtonColor: "#4f46e5"
+      });
     } finally {
       setSendingEmail(null);
     }

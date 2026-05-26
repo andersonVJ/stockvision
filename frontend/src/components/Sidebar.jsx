@@ -18,7 +18,8 @@ import {
     Route,
     ClipboardList,
     Menu,
-    X
+    X,
+    Shield
 } from "lucide-react";
 
 import Logo from "./Logo";
@@ -43,7 +44,10 @@ export default function Sidebar() {
         navigate("/");
     };
 
+    const isSuperuser = user?.is_superuser === true;
+
     const menuItems = [
+        ...(isSuperuser ? [{ name: "Panel Admin", path: "/superadmin", icon: <Shield className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO", "VENDEDOR"] }] : []),
         { name: "Inicio", path: "/inicio", icon: <Home className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO", "EMPLEADO", "VENDEDOR"] },
         { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard className="w-[18px] h-[18px]" />, roles: ["ADMIN", "JEFE_INVENTARIO"] },
         { name: "Sedes", path: "/sedes", icon: <Building2 className="w-[18px] h-[18px]" />, roles: ["ADMIN"] },

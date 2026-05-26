@@ -165,3 +165,40 @@ export const getClientByDocument = async (idDocument) => {
     return res.data;
 };
 
+// --- COMPANY CRUD ---
+export const createCompany = async (data) => {
+    const res = await axios.post("/api/companies/", data, getAuthHeaders());
+    return res.data;
+};
+
+export const updateCompany = async (id, data) => {
+    const res = await axios.put(`/api/companies/${id}/`, data, getAuthHeaders());
+    return res.data;
+};
+
+export const deleteCompany = async (id) => {
+    const res = await axios.delete(`/api/companies/${id}/`, getAuthHeaders());
+    return res.data;
+};
+
+// --- EMPLOYEES ---
+export const getEmployees = async (companyId = null) => {
+    const url = companyId ? `/api/users/employees/?company=${companyId}` : "/api/users/employees/";
+    const res = await axios.get(url, getAuthHeaders());
+    return res.data;
+};
+
+export const createEmployee = async (data) => {
+    const res = await axios.post("/api/users/employees/", data, getAuthHeaders());
+    return res.data;
+};
+
+export const updateEmployee = async (id, data) => {
+    const res = await axios.patch(`/api/users/employees/${id}/`, data, getAuthHeaders());
+    return res.data;
+};
+
+export const deleteEmployee = async (id) => {
+    const res = await axios.delete(`/api/users/employees/${id}/`, getAuthHeaders());
+    return res.data;
+};

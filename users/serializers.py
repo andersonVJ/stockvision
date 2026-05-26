@@ -13,8 +13,8 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role', 'company', 'company_name', 'branch', 'branch_name', 'cedula', 'position', 'position_display', 'assigned_by', 'assigned_by_name')
-        read_only_fields = ('id', 'assigned_by_name')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role', 'is_superuser', 'is_staff', 'company', 'company_name', 'branch', 'branch_name', 'cedula', 'position', 'position_display', 'assigned_by', 'assigned_by_name')
+        read_only_fields = ('id', 'is_superuser', 'is_staff', 'assigned_by_name')
 
     def get_assigned_by_name(self, obj):
         if obj.assigned_by:

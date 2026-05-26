@@ -17,6 +17,7 @@ import Clientes from "./pages/Clientes";
 import Logistica from "./pages/Logistica";
 import OrdenesCompra from "./pages/OrdenesCompra";
 import Predicciones from "./pages/Predicciones";
+import SuperAdmin from "./pages/SuperAdmin";
 
 function App() {
   return (
@@ -40,6 +41,7 @@ function App() {
         <Route path="/logistica" element={<Logistica />} />
         <Route path="/compras" element={<OrdenesCompra />} />
         <Route path="/predictions" element={<Predicciones />} />
+        <Route path="/superadmin" element={<SuperAdmin />} />
       </Routes>
     </BrowserRouter>
   );

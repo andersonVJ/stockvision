@@ -50,7 +50,7 @@ export default function PuntoDeVenta() {
   };
 
   const addToCart = (inventory) => {
-    if (cart.length > 0 && cart[0].branch_id && cart[0].branch_id !== inventory.branch) {
+    if (cart.length > 0 && cart[0].branch_id && cart[0].branch_id !== inventory.branch_id) {
       showWarningAlert("No puedes mezclar productos de diferentes sedes en el mismo carrito.");
       return;
     }
@@ -76,7 +76,7 @@ export default function PuntoDeVenta() {
         quantity: 1, 
         available: inventory.quantity,
         branch_name: inventory.branch_name,
-        branch_id: inventory.branch
+        branch_id: inventory.branch_id
       }]);
     }
   };
@@ -228,7 +228,7 @@ export default function PuntoDeVenta() {
                   {Array.from(new Set(inventories.map(inv => inv.branch_name)))
                     .map(name => inventories.find(inv => inv.branch_name === name))
                     .map(inv => (
-                      <option key={inv.branch} value={inv.branch}>{inv.branch_name}</option>
+                      <option key={inv.branch_id} value={inv.branch_id}>{inv.branch_name}</option>
                   ))}
                 </select>
               )}
@@ -239,7 +239,7 @@ export default function PuntoDeVenta() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto flex-1 content-start pr-2">
                 {inventories
-                  .filter(inv => selectedBranchId ? String(inv.branch) === String(selectedBranchId) : true)
+                  .filter(inv => selectedBranchId ? String(inv.branch_id) === String(selectedBranchId) : true)
                   .map(inv => {
                   const productDetail = products.find(p => p.sku === inv.product_sku) || { price: 0 };
                   const isHigh = inv.quantity > 5;

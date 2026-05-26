@@ -214,7 +214,7 @@ export default function GestionProveedores() {
                     <option value="">Cualquier Sede</option>
                     {Array.from(new Set(allInventories.map(inv => inv.branch_name)))
                       .map(name => allInventories.find(inv => inv.branch_name === name))
-                      .map(inv => <option key={inv.branch} value={inv.branch}>{inv.branch_name}</option>)}
+                      .map(inv => <option key={inv.branch_id} value={inv.branch_id}>{inv.branch_name}</option>)}
                   </select>
                 </div>
               )}
@@ -262,7 +262,7 @@ export default function GestionProveedores() {
                     passCat = allProducts.some(pr => String(pr.category) === String(providerCatFilter) && pr.providers?.includes(p.id));
                   }
                   if (providerBranchFilter && user.role === 'ADMIN') {
-                    passBranch = allInventories.some(inv => String(inv.branch) === String(providerBranchFilter) && inv.providers_details?.some(pd => pd.id === p.id));
+                    passBranch = allInventories.some(inv => String(inv.branch_id) === String(providerBranchFilter) && inv.providers_details?.some(pd => pd.id === p.id));
                   }
                   return passCat && passBranch;
                 }).map(p => (

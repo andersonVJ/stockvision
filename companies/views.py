@@ -217,8 +217,22 @@ def request_password_reset(request):
         # Invalidar/Borrar tokens de recuperación anteriores pendientes
         PasswordResetToken.objects.filter(user=user).delete()
 
-        reset_token = PasswordResetToken.objects.create(user=user)
-        reset_link = f"http://localhost:5173/reset-password/{reset_token.token}"
+        # Get the frontend host dynamically
+        origin = request.headers.get('Origin')
+        if not origin:
+            referer = request.headers.get('Referer')
+            if referer:
+                from urllib.parse import urlparse
+                parsed = urlparse(referer)
+                origin = f"{parsed.scheme}://{parsed.netloc}"
+        if not origin:
+            host = request.get_host()
+            if 'localhost' in host or '127.0.0.1' in host:
+                origin = "http://localhost:5173"
+            else:
+                origin = "https://app.stockvision.site"
+
+        reset_link = f"{origin}/reset-password/{reset_token.token}"
 
         html_content = f"""
         <!DOCTYPE html>

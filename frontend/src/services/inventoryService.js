@@ -202,3 +202,14 @@ export const deleteEmployee = async (id) => {
     const res = await axios.delete(`/api/users/employees/${id}/`, getAuthHeaders());
     return res.data;
 };
+
+export const importProductsExcel = async (formData) => {
+    const tokens = JSON.parse(localStorage.getItem("tokens") || "{}");
+    const res = await axios.post("/api/inventory/products/import_excel/", formData, {
+        headers: {
+            "Authorization": `Bearer ${tokens.access}`,
+            "Content-Type": "multipart/form-data"
+        }
+    });
+    return res.data;
+};

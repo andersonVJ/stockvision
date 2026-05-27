@@ -200,6 +200,118 @@ class ProductViewSet(BaseInventoryViewSet):
             "stock_muerto": stock_muerto
         })
 
+    @action(detail=False, methods=['post'], url_path='import_excel')
+    def import_excel(self, request):
+        user = request.user
+        company = user.company
+        if not company:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({"detail": "Tu usuario no tiene una empresa asociada."})
+            
+        file_obj = request.FILES.get('file')
+        if not file_obj:
+            return Response({"detail": "No se proporcionó ningún archivo."}, status=400)
+            
+        import pandas as pd
+        import uuid
+        import io
+        from django.utils import timezone
+        
+        try:
+            if file_obj.name.endswith('.csv'):
+                df = pd.read_csv(file_obj)
+            else:
+                df = pd.read_excel(file_obj)
+        except Exception as e:
+            return Response({"detail": f"Error al leer el archivo: {str(e)}"}, status=400)
+            
+        columns = [str(col).strip().lower() for col in df.columns]
+        
+        def find_column(keywords, default_idx=None):
+            for i, col in enumerate(columns):
+                if any(kw in col for kw in keywords):
+                    return df.columns[i]
+            if default_idx is not None and default_idx < len(df.columns):
+                return df.columns[default_idx]
+            return None
+            
+        name_col = find_column(['nombre', 'name', 'producto', 'product', 'articulo', 'artículo', 'item'], 0)
+        desc_col = find_column(['descrip', 'detail', 'detalle', 'info', 'descripcion', 'descripción'], 1)
+        price_col = find_column(['precio', 'price', 'valor', 'costo', 'cost', 'unitario', 'base', 'tarifa'], 2)
+        
+        if not name_col:
+            return Response({"detail": "No se pudo identificar la columna 'Nombre' del producto. Asegúrate de tener una columna de Nombre."}, status=400)
+            
+        imported_products = []
+        created_count = 0
+        
+        from django.db import transaction
+        
+        with transaction.atomic():
+            for idx, row in df.iterrows():
+                name_val = str(row[name_col]).strip() if pd.notna(row[name_col]) else ""
+                if not name_val:
+                    continue
+                    
+                desc_val = str(row[desc_col]).strip() if desc_col and pd.notna(row[desc_col]) else ""
+                
+                price_val = 0.0
+                if price_col and pd.notna(row[price_col]):
+                    try:
+                        cleaned_price = str(row[price_col]).replace('$', '').replace(' ', '').strip()
+                        if cleaned_price.count('.') > 1:
+                            cleaned_price = cleaned_price.replace('.', '')
+                        elif ',' in cleaned_price and '.' in cleaned_price:
+                            cleaned_price = cleaned_price.replace('.', '').replace(',', '.')
+                        elif ',' in cleaned_price:
+                            cleaned_price = cleaned_price.replace(',', '.')
+                        price_val = float(cleaned_price)
+                    except ValueError:
+                        price_val = 1000.0
+                else:
+                    price_val = 1000.0
+                    
+                sku_val = f"PROD-{uuid.uuid4().hex[:8].upper()}"
+                while Product.objects.filter(sku=sku_val, company=company).exists():
+                    sku_val = f"PROD-{uuid.uuid4().hex[:8].upper()}"
+                    
+                product = Product.objects.create(
+                    company=company,
+                    name=name_val,
+                    sku=sku_val,
+                    description=desc_val,
+                    price=price_val,
+                    is_active=True,
+                    fecha_ingreso=timezone.now()
+                )
+                
+                from companies.models import Branch
+                from .models import Inventory, Warehouse
+                branches = Branch.objects.filter(company=company)
+                for branch in branches:
+                    warehouse, _ = Warehouse.objects.get_or_create(
+                        branch=branch,
+                        type='STORAGE',
+                        defaults={
+                            'name': f'Almacén Principal - {branch.name}',
+                            'is_active': True
+                        }
+                    )
+                    Inventory.objects.get_or_create(
+                        product=product,
+                        warehouse=warehouse,
+                        defaults={'quantity': 0, 'min_stock': 5, 'max_stock': 100}
+                    )
+                
+                imported_products.append(ProductSerializer(product).data)
+                created_count += 1
+                
+        return Response({
+            "status": "success",
+            "message": f"Se importaron {created_count} productos exitosamente.",
+            "data": imported_products
+        }, status=201)
+
     def get_queryset(self):
         qs = super().get_queryset()
         if self.request.query_params.get('include_inactive') == 'true':

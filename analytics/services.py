@@ -152,7 +152,7 @@ class AIOrchestrator:
         p_ids = list(products.values_list('id', flat=True))
         
         # Integration with existing PredictionService
-        result = PredictionService.get_inventory_predictions(p_ids)
+        result = PredictionService.get_inventory_predictions(p_ids, branch=branch)
         
         if result.get("status") == "success":
             # Update Cache

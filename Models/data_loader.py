@@ -11,7 +11,7 @@ class DataLoader:
     """
 
     @staticmethod
-    def load_historical_sales(product_ids=None):
+    def load_historical_sales(product_ids=None, branch=None):
         """
         Loads REAL historical sales data from the Django database (SaleItem model).
         Aggregates by date and product_id for ML consistency.
@@ -25,6 +25,8 @@ class DataLoader:
         sales_qs = SaleItem.objects.all()
         if product_ids:
             sales_qs = sales_qs.filter(product_id__in=product_ids)
+        if branch:
+            sales_qs = sales_qs.filter(sale__branch=branch)
             
         # Aggregate by date (TruncDate) and product_id
         sales_agg = sales_qs.annotate(
@@ -108,7 +110,7 @@ class DataLoader:
         return df
 
     @staticmethod
-    def load_inventory_snapshot(product_ids=None):
+    def load_inventory_snapshot(product_ids=None, branch=None):
         """
         Gets REAL current stock snapshot from the database.
         """
@@ -122,8 +124,11 @@ class DataLoader:
 
         data = []
         for p in query:
-            # Aggregate total stock across all warehouses
-            total_stock = Inventory.objects.filter(product=p).aggregate(Sum('quantity'))['quantity__sum'] or 0
+            # Aggregate total stock across warehouses
+            inv_filter = Inventory.objects.filter(product=p)
+            if branch:
+                inv_filter = inv_filter.filter(warehouse__branch=branch)
+            total_stock = inv_filter.aggregate(Sum('quantity'))['quantity__sum'] or 0
             
             # Use category name if exists
             cat_name = p.category.name if p.category else "Sin Categoría"

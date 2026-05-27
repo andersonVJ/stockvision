@@ -3,10 +3,10 @@ import Sidebar from "../components/Sidebar";
 import { useNavigate } from "react-router-dom";
 import { 
   getCategories, createCategory, updateCategory, deleteCategory, getProducts, createProduct, updateProduct, deleteProduct, 
-  getInventories, getMovements, createMovement, getDashboardAlerts, getProviders
+  getInventories, getMovements, createMovement, getDashboardAlerts, getProviders, importProductsExcel
 } from "../services/inventoryService";
 import { showErrorAlert, showSuccessAlert, showConfirmAlert } from "../utils/alerts";
-import { ShoppingCart, AlertTriangle, Clock, List, LayoutGrid, PackageX, Edit2, Building, Search, Trash2 } from "lucide-react";
+import { ShoppingCart, AlertTriangle, Clock, List, LayoutGrid, PackageX, Edit2, Building, Search, Trash2, Upload } from "lucide-react";
 import { formatCurrency } from "../utils/currency";
 
 export default function Inventario() {
@@ -22,6 +22,34 @@ export default function Inventario() {
   const [alerts, setAlerts] = useState({ cercanos_fin_vida: [], stock_muerto: [], bajo_stock: [] });
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'table'
+  
+  // EXCEL IMPORT STATES
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [excelFile, setExcelFile] = useState(null);
+  const [importing, setImporting] = useState(false);
+
+  const handleImportSubmit = async (e) => {
+    e.preventDefault();
+    if (!excelFile) {
+      showErrorAlert("Por favor selecciona un archivo Excel o CSV.");
+      return;
+    }
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", excelFile);
+      const res = await importProductsExcel(formData);
+      showSuccessAlert(res.message || "Productos importados con éxito");
+      setShowImportModal(false);
+      setExcelFile(null);
+      loadData();
+    } catch (err) {
+      const msg = err.response?.data?.detail || "Error al importar el archivo Excel/CSV.";
+      showErrorAlert(msg);
+    } finally {
+      setImporting(false);
+    }
+  };
 
   // FILTERS
   const [showInvFilters, setShowInvFilters] = useState(false);
@@ -287,14 +315,22 @@ export default function Inventario() {
                          Filtros Administrativos { (searchFilter || categoryFilter || branchFilter) && <span className="bg-blue-500 w-2 h-2 rounded-full shadow-sm"></span> }
                       </button>
                       {user.role !== 'EMPLEADO' && (
-                        <button onClick={() => {
-                            setIsEditingProduct(false);
-                            setEditingProductId(null);
-                            setProdData({ name: "", sku: "", price: "", category: "", fecha_ingreso: "", image: null, providers: [], description: "" });
-                            setShowProductModal(true);
-                        }} className="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm flex items-center gap-2">
-                          + Nuevo Producto
-                        </button>
+                        <div className="flex gap-2">
+                          <button onClick={() => {
+                              setExcelFile(null);
+                              setShowImportModal(true);
+                          }} className="bg-emerald-600 hover:bg-emerald-700 transition-colors text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm flex items-center gap-2">
+                            <Upload className="w-4 h-4" /> Importar Excel
+                          </button>
+                          <button onClick={() => {
+                              setIsEditingProduct(false);
+                              setEditingProductId(null);
+                              setProdData({ name: "", sku: "", price: "", category: "", fecha_ingreso: "", image: null, providers: [], description: "" });
+                              setShowProductModal(true);
+                          }} className="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm flex items-center gap-2">
+                            + Nuevo Producto
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -780,6 +816,67 @@ export default function Inventario() {
               <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100">
                 <button type="button" onClick={() => setShowMovementModal(false)} className="px-5 py-2.5 text-slate-600 font-medium hover:bg-slate-100 rounded-xl transition-colors">Volver</button>
                 <button type="submit" className="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-xl transition-colors shadow-sm">Aplicar Flujo</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      {/* MODAL IMPORTAR EXCEL */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+          <div className="bg-white p-8 rounded-2xl w-full max-w-md shadow-2xl">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2.5 bg-emerald-100 text-emerald-600 rounded-xl">
+                <Upload className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="font-bold text-xl text-slate-800 leading-none">Importar Inventario</h2>
+                <p className="text-xs text-slate-500 mt-1">Carga masiva desde una hoja de cálculo (Excel/CSV)</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleImportSubmit} className="flex flex-col gap-5">
+              <div className="border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-2xl p-6 text-center cursor-pointer transition-colors bg-slate-50 flex flex-col items-center justify-center min-h-[140px] relative">
+                <input
+                  required
+                  type="file"
+                  accept=".xlsx, .xls, .csv"
+                  onChange={(e) => setExcelFile(e.target.files?.[0] || null)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <Upload className="w-8 h-8 text-slate-400 mb-2" />
+                <span className="text-sm font-bold text-slate-700">
+                  {excelFile ? excelFile.name : "Selecciona o arrastra tu archivo"}
+                </span>
+                <span className="text-xs text-slate-400 mt-1">
+                  Soporta .xlsx, .xls y .csv
+                </span>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Columnas detectadas automáticamente:</h4>
+                <ul className="text-xs text-slate-600 space-y-1.5 list-disc pl-4 font-medium">
+                  <li><b>Nombre:</b> Nombre, Producto, Item, etc. (Obligatorio)</li>
+                  <li><b>Descripción:</b> Detalles, Info, etc. (Opcional)</li>
+                  <li><b>Precio Base:</b> Precio, Valor, Costo, etc. (Opcional, default: $1.000)</li>
+                </ul>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  disabled={importing}
+                  onClick={() => setShowImportModal(false)}
+                  className="px-5 py-2.5 text-slate-600 font-medium hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-55"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={importing}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-colors shadow-sm disabled:opacity-55 flex items-center gap-2"
+                >
+                  {importing ? "Importando..." : "Subir Archivo"}
+                </button>
               </div>
             </form>
           </div>

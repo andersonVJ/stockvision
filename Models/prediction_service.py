@@ -22,10 +22,10 @@ class PredictionService:
     """
 
     @staticmethod
-    def get_inventory_predictions(product_ids=None):
+    def get_inventory_predictions(product_ids=None, branch=None):
 
         model_logger.info(
-            f"Starting prediction process for product_ids: {product_ids}"
+            f"Starting prediction process for product_ids: {product_ids}, branch: {branch}"
         )
 
         results = []
@@ -37,11 +37,11 @@ class PredictionService:
             # ==========================================
 
             sales_df = DataLoader.load_historical_sales(
-                product_ids
+                product_ids, branch=branch
             )
 
             inv_df = DataLoader.load_inventory_snapshot(
-                product_ids
+                product_ids, branch=branch
             )
 
             if inv_df.empty:

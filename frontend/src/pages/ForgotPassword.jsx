@@ -1,4 +1,5 @@
 import { useState } from "react";
+import axios from "axios";
 import BASE_API_URL from "../config/apiConfig";
 import Logo from "../components/Logo";
 import { useNavigate } from "react-router-dom";
@@ -29,7 +30,7 @@ export default function ForgotPassword() {
       } else if (err.response && err.response.status === 404) {
         setMessage(err.response.data.error || "No existe un usuario/empleado con ese correo.");
       } else {
-        setMessage("Ha ocurrido un error inesperado.");
+        setMessage(err.response?.data?.error || "Ha ocurrido un error inesperado.");
       }
 
     } finally {

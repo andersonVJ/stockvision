@@ -212,8 +212,14 @@ def request_password_reset(request):
     generic_message = "Si el correo está registrado, recibirás instrucciones."
 
     try:
-        user = User.objects.get(email=email)
+        user = User.objects.get(email__iexact=email)
+    except User.DoesNotExist:
+        return Response(
+            {"error": "No existe un usuario/empleado registrado con este correo."},
+            status=status.HTTP_404_NOT_FOUND
+        )
 
+    try:
         # Invalidar/Borrar tokens de recuperación anteriores pendientes
         PasswordResetToken.objects.filter(user=user).delete()
 
@@ -232,6 +238,7 @@ def request_password_reset(request):
             else:
                 origin = "https://app.stockvision.site"
 
+        reset_token = PasswordResetToken.objects.create(user=user)
         reset_link = f"{origin}/reset-password/{reset_token.token}"
 
         html_content = f"""
@@ -266,10 +273,13 @@ def request_password_reset(request):
 
         return Response({"message": generic_message})
 
-    except User.DoesNotExist:
+    except Exception as e:
+        import traceback
+        print(f"Error en recuperación de contraseña para {email}: {str(e)}")
+        print(traceback.format_exc())
         return Response(
-            {"error": "No existe un usuario/empleado registrado con este correo."},
-            status=status.HTTP_404_NOT_FOUND
+            {"error": f"Error en el servidor de correo: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
 

@@ -167,7 +167,7 @@ export default function GestionEmpleados() {
           password_confirm: ""
         });
 
-        fetchEmployees();
+        loadEmployees();
       } else {
         setFormError(JSON.stringify(data));
       }

@@ -820,6 +820,7 @@ export default function Inventario() {
             </form>
           </div>
         </div>
+      )}
       {/* MODAL IMPORTAR EXCEL */}
       {showImportModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex justify-center items-center z-50 p-4">

@@ -363,7 +363,7 @@ export default function Clientes() {
         {/* Modal de Historial de Compras */}
         {showHistory && (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
               <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
@@ -382,7 +382,7 @@ export default function Clientes() {
                 </button>
               </div>
               
-              <div className="p-6">
+              <div className="p-6 overflow-y-auto flex-1">
                 {loadingHistory ? (
                   <div className="p-12 text-center text-slate-400 font-medium">Cargando compras...</div>
                 ) : history.length === 0 ? (

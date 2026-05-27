@@ -167,7 +167,7 @@ else:
 # EMAIL CONFIG (MAILTRAP SMTP)
 _mailtrap_token = os.environ.get('MAILTRAP_API_TOKEN', '').strip()
 if not _mailtrap_token:
-    _mailtrap_token = 'e7bfc3982455596788b3f359012981f2'
+    _mailtrap_token = 'bfd2ad2b0c1f6c1f29c70862481479ef'
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'live.smtp.mailtrap.io'

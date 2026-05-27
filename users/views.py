@@ -41,8 +41,12 @@ class ProfileView(APIView):
             if not user.check_password(serializer.validated_data['old_password']):
                 return Response({"old_password": ["Contraseña actual incorrecta."]}, status=status.HTTP_400_BAD_REQUEST)
             user.set_password(serializer.validated_data['new_password'])
+            user.must_change_password = False
             user.save()
-            return Response({"message": "Contraseña actualizada exitosamente"}, status=status.HTTP_200_OK)
+            return Response({
+                "message": "Contraseña actualizada exitosamente",
+                "user": UserSerializer(user).data
+            }, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class EmployeeListCreateView(generics.ListCreateAPIView):
@@ -111,6 +115,7 @@ class EmployeeListCreateView(generics.ListCreateAPIView):
                 user.company = request.user.company
             if request.user.is_jefe_inventario and request.user.branch:
                 user.branch = request.user.branch
+            user.must_change_password = True
             user.save()
             user_data = UserSerializer(user).data
             return Response(user_data, status=status.HTTP_201_CREATED)

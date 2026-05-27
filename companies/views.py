@@ -330,6 +330,7 @@ def reset_password(request):
 
         # Encriptar la nueva contraseña con el hash fuerte de Django (previene SQLi por defecto)
         user.set_password(password)
+        user.must_change_password = False
         user.save()
 
         # Cerrar sesiones activas del usuario en otros navegadores

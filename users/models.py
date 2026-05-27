@@ -33,6 +33,7 @@ class User(AbstractUser):
     email = models.EmailField(unique=True, verbose_name='Correo electrónico')
     company = models.ForeignKey('companies.Company', on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
     branch = models.ForeignKey('companies.Branch', on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
+    must_change_password = models.BooleanField(default=False, verbose_name="Debe cambiar contraseña")
 
 
     @property

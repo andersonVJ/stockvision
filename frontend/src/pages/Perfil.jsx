@@ -57,6 +57,9 @@ export default function Perfil() {
         setOldPassword("");
         setNewPassword("");
         setNewPasswordConfirm("");
+        if (data.user) {
+          localStorage.setItem("user", JSON.stringify(data.user));
+        }
       } else {
         setMessage({ text: data.old_password?.[0] || data.new_password?.[0] || "Error al actualizar", type: "error" });
       }

@@ -168,6 +168,34 @@ export default function Sidebar() {
 
             </div>
 
+            {/* Modal de Alerta de Contraseña Temporal */}
+            {user?.must_change_password === true && location.pathname !== "/perfil" && (
+                <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-[99999] p-4">
+                    <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-100 flex flex-col items-center text-center">
+                        <div className="w-16 h-16 bg-amber-50 border border-amber-200 text-amber-500 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <h2 className="text-2xl font-bold text-slate-800 mb-3">
+                            Contraseña Temporal Detectada
+                        </h2>
+                        <p className="text-slate-500 text-sm leading-relaxed mb-8">
+                            Por la seguridad de tu cuenta y para cumplir con las políticas de StockVision, debes cambiar tu contraseña antes de continuar usando el sistema.
+                        </p>
+                        <button
+                            onClick={() => {
+                                navigate("/perfil");
+                                setIsOpen(false);
+                            }}
+                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3.5 px-6 rounded-2xl transition-all hover:shadow-lg hover:shadow-blue-500/20 active:scale-[0.98]"
+                        >
+                            Cambiar Contraseña Ahora
+                        </button>
+                    </div>
+                </div>
+            )}
+
         </>
     );
 }

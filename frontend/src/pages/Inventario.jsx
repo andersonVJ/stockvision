@@ -714,6 +714,25 @@ export default function Inventario() {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex justify-center items-center z-50 p-4">
           <div className="bg-white p-8 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
             <h2 className="font-bold text-2xl text-slate-800 mb-6">{isEditingProduct ? "Modificar Producto" : "Crear Nuevo Producto"}</h2>
+            {!isEditingProduct && (
+              <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between shadow-sm">
+                <div>
+                  <h4 className="text-sm font-bold text-emerald-800">¿Quieres cargar productos de forma masiva?</h4>
+                  <p className="text-xs text-emerald-600 mt-0.5">Sube una hoja de cálculo (Excel/CSV) con el listado completo.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProductModal(false);
+                    setExcelFile(null);
+                    setShowImportModal(true);
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm"
+                >
+                  <Upload className="w-3.5 h-3.5" /> Subir Excel/CSV
+                </button>
+              </div>
+            )}
             <form onSubmit={handleProductSubmit} className="flex flex-col gap-6">
 
               <div className="grid grid-cols-2 gap-6">

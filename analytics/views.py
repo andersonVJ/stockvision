@@ -16,22 +16,29 @@ class DashboardSummaryAPIView(APIView):
     def get(self, request):
         user = request.user
         company = user.company
+        branch_id = request.query_params.get('branch')
+        
         if user.is_superuser:
-            company_id = request.query_params.get('company')
-            if company_id:
-                from companies.models import Company
-                try:
-                    company = Company.objects.get(id=company_id)
-                except Company.DoesNotExist:
-                    return Response({"detail": "La empresa especificada no existe."}, status=400)
-            else:
-                from companies.models import Company
-                company = Company.objects.first()
+            if branch_id:
+                branch = Branch.objects.filter(id=branch_id).first()
+                if branch:
+                    company = branch.company
+            
+            if not branch_id or not Branch.objects.filter(id=branch_id).exists():
+                company_id = request.query_params.get('company')
+                if company_id:
+                    from companies.models import Company
+                    try:
+                        company = Company.objects.get(id=company_id)
+                    except Company.DoesNotExist:
+                        return Response({"detail": "La empresa especificada no existe."}, status=400)
+                else:
+                    from companies.models import Company
+                    company = Company.objects.first()
 
         if not company:
             return Response({"detail": "Tu usuario no tiene una empresa asociada."}, status=status.HTTP_400_BAD_REQUEST)
 
-        branch_id = request.query_params.get('branch')
         category_id = request.query_params.get('category')
         start_date = request.query_params.get('startDate')
         end_date = request.query_params.get('endDate')
@@ -55,22 +62,29 @@ class AlertsAPIView(APIView):
     def get(self, request):
         user = request.user
         company = user.company
+        branch_id = request.query_params.get('branch')
+        
         if user.is_superuser:
-            company_id = request.query_params.get('company')
-            if company_id:
-                from companies.models import Company
-                try:
-                    company = Company.objects.get(id=company_id)
-                except Company.DoesNotExist:
-                    return Response({"detail": "La empresa especificada no existe."}, status=400)
-            else:
-                from companies.models import Company
-                company = Company.objects.first()
+            if branch_id:
+                branch = Branch.objects.filter(id=branch_id).first()
+                if branch:
+                    company = branch.company
+            
+            if not branch_id or not Branch.objects.filter(id=branch_id).exists():
+                company_id = request.query_params.get('company')
+                if company_id:
+                    from companies.models import Company
+                    try:
+                        company = Company.objects.get(id=company_id)
+                    except Company.DoesNotExist:
+                        return Response({"detail": "La empresa especificada no existe."}, status=400)
+                else:
+                    from companies.models import Company
+                    company = Company.objects.first()
 
         if not company:
             return Response({"detail": "Tu usuario no tiene una empresa asociada."}, status=status.HTTP_400_BAD_REQUEST)
 
-        branch_id = request.query_params.get('branch')
         category_id = request.query_params.get('category')
         
         branch = Branch.objects.filter(id=branch_id, company=company).first() if branch_id else None
@@ -89,22 +103,29 @@ class ChartDataAPIView(APIView):
     def get(self, request):
         user = request.user
         company = user.company
+        branch_id = request.query_params.get('branch')
+        
         if user.is_superuser:
-            company_id = request.query_params.get('company')
-            if company_id:
-                from companies.models import Company
-                try:
-                    company = Company.objects.get(id=company_id)
-                except Company.DoesNotExist:
-                    return Response({"detail": "La empresa especificada no existe."}, status=400)
-            else:
-                from companies.models import Company
-                company = Company.objects.first()
+            if branch_id:
+                branch = Branch.objects.filter(id=branch_id).first()
+                if branch:
+                    company = branch.company
+            
+            if not branch_id or not Branch.objects.filter(id=branch_id).exists():
+                company_id = request.query_params.get('company')
+                if company_id:
+                    from companies.models import Company
+                    try:
+                        company = Company.objects.get(id=company_id)
+                    except Company.DoesNotExist:
+                        return Response({"detail": "La empresa especificada no existe."}, status=400)
+                else:
+                    from companies.models import Company
+                    company = Company.objects.first()
 
         if not company:
             return Response({"detail": "Tu usuario no tiene una empresa asociada."}, status=status.HTTP_400_BAD_REQUEST)
 
-        branch_id = request.query_params.get('branch')
         category_id = request.query_params.get('category')
         start_date = request.query_params.get('startDate')
         end_date = request.query_params.get('endDate')
@@ -196,16 +217,22 @@ class ExportAPIView(APIView):
 
         company = user.company
         if user.is_superuser:
-            company_id = request.query_params.get('company')
-            if company_id:
-                from companies.models import Company
-                try:
-                    company = Company.objects.get(id=company_id)
-                except Company.DoesNotExist:
-                    return Response({"detail": "La empresa especificada no existe."}, status=400)
-            else:
-                from companies.models import Company
-                company = Company.objects.first()
+            if branch_id:
+                branch = Branch.objects.filter(id=branch_id).first()
+                if branch:
+                    company = branch.company
+            
+            if not branch_id or not Branch.objects.filter(id=branch_id).exists():
+                company_id = request.query_params.get('company')
+                if company_id:
+                    from companies.models import Company
+                    try:
+                        company = Company.objects.get(id=company_id)
+                    except Company.DoesNotExist:
+                        return Response({"detail": "La empresa especificada no existe."}, status=400)
+                else:
+                    from companies.models import Company
+                    company = Company.objects.first()
 
         if not company:
             return Response({"detail": "Tu usuario no tiene una empresa asociada."}, status=status.HTTP_400_BAD_REQUEST)

@@ -132,6 +132,7 @@ class AIOrchestrator:
         if not force_refresh:
             cached = AnalyticsCache.objects.filter(
                 company=company, 
+                branch=branch,
                 cache_type='PREDICTIONS',
                 expire_at__gt=timezone.now()
             ).first()

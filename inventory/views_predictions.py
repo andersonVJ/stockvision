@@ -13,16 +13,29 @@ class InventoryPredictionsView(APIView):
     API View to retrieve advanced inventory predictions using Prophet and XGBoost.
     Early mock integration endpoint.
     """
-    # Permission could be IsAuthenticated if needed in production
-    # permission_classes = [IsAuthenticated] 
+    permission_classes = [IsAuthenticated] 
 
     def get(self, request):
-        product_id = request.query_params.get('product_id', None)
+        user = request.user
+        company = getattr(user, 'company', None)
         
-        # If product_id is passed, parse to list of ints, else None
-        p_ids = None
+        products = Product.objects.filter(is_active=True)
+        if not user.is_superuser:
+            if not company:
+                return Response({"detail": "Tu usuario no tiene una empresa asociada."}, status=status.HTTP_400_BAD_REQUEST)
+            products = products.filter(company=company)
+            
+        product_id = request.query_params.get('product_id', None)
         if product_id:
-            p_ids = [int(p) for p in product_id.split(',')]
+            try:
+                p_ids_requested = [int(p) for p in product_id.split(',')]
+                products = products.filter(id__in=p_ids_requested)
+            except ValueError:
+                return Response({"detail": "product_id inválido."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        p_ids = list(products.values_list('id', flat=True))
+        if not p_ids:
+            return Response({"status": "success", "data": []}, status=200)
             
         result = PredictionService.get_inventory_predictions(p_ids)
         

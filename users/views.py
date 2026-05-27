@@ -15,6 +15,8 @@ class RegisterView(APIView):
         serializer = RegisterUserSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
+            user.must_change_password = False
+            user.save()
             return Response(
                 {"message": "Usuario registrado exitosamente", "user": {"id": user.id, "username": user.username}},
                 status=status.HTTP_201_CREATED

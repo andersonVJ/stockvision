@@ -66,7 +66,8 @@ class RegisterUserSerializer(serializers.ModelSerializer):
             company=validated_data.get('company', None),
             branch=validated_data.get('branch', None),
             cedula=validated_data.get('cedula', None),
-            position=validated_data.get('position', None)
+            position=validated_data.get('position', None),
+            must_change_password=True
         )
         return user
 

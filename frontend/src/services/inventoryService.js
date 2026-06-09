@@ -213,3 +213,14 @@ export const importProductsExcel = async (formData) => {
     });
     return res.data;
 };
+
+export const bulkDeleteProducts = async (ids) => {
+    const res = await axios.post("/api/inventory/products/bulk_delete/", { ids }, getAuthHeaders());
+    return res.data;
+};
+
+export const bulkUpdateProducts = async (data) => {
+    const res = await axios.post("/api/inventory/products/bulk_update/", data, getAuthHeaders());
+    return res.data;
+};
+

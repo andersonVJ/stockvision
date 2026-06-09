@@ -3,7 +3,7 @@ import Sidebar from "../components/Sidebar";
 import { useNavigate } from "react-router-dom";
 import { 
   getCategories, createCategory, updateCategory, deleteCategory, getProducts, createProduct, updateProduct, deleteProduct, 
-  getInventories, getMovements, createMovement, getDashboardAlerts, getProviders, importProductsExcel
+  getInventories, getMovements, createMovement, getDashboardAlerts, getProviders, importProductsExcel, bulkDeleteProducts, bulkUpdateProducts
 } from "../services/inventoryService";
 import { showErrorAlert, showSuccessAlert, showConfirmAlert } from "../utils/alerts";
 import { ShoppingCart, AlertTriangle, Clock, List, LayoutGrid, PackageX, Edit2, Building, Search, Trash2, Upload } from "lucide-react";
@@ -23,6 +23,11 @@ export default function Inventario() {
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'table'
   
+  // SELECTION STATES
+  const [selectedProductIds, setSelectedProductIds] = useState([]);
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
+  const [bulkEditData, setBulkEditData] = useState({ category: "", price: "" });
+
   // EXCEL IMPORT STATES
   const [showImportModal, setShowImportModal] = useState(false);
   const [excelFile, setExcelFile] = useState(null);
@@ -226,6 +231,72 @@ export default function Inventario() {
     setShowProductModal(true);
   };
 
+  const handleSelectProduct = (productId, isChecked) => {
+    if (isChecked) {
+      setSelectedProductIds([...selectedProductIds, productId]);
+    } else {
+      setSelectedProductIds(selectedProductIds.filter(id => id !== productId));
+    }
+  };
+
+  const handleSelectAll = (isChecked) => {
+    if (isChecked) {
+      setSelectedProductIds(filteredProducts.map(p => p.id));
+    } else {
+      setSelectedProductIds([]);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const isConfirmed = await showConfirmAlert(
+      "¿Eliminar productos seleccionados?",
+      `Esta acción intentará eliminar o inactivar los ${selectedProductIds.length} productos seleccionados. ¿Continuar?`
+    );
+    if (!isConfirmed) return;
+    
+    setLoading(true);
+    try {
+      const res = await bulkDeleteProducts(selectedProductIds);
+      showSuccessAlert(res.detail || "Productos eliminados con éxito");
+      setSelectedProductIds([]);
+      loadData();
+    } catch (err) {
+      const msg = err.response?.data?.detail || "Error al eliminar productos seleccionados.";
+      showErrorAlert(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkUpdateSubmit = async (e) => {
+    e.preventDefault();
+    if (!bulkEditData.category && !bulkEditData.price) {
+      showErrorAlert("Debes especificar al menos un campo para actualizar.");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const payload = {
+        ids: selectedProductIds,
+        ...(bulkEditData.category ? { category: bulkEditData.category } : {}),
+        ...(bulkEditData.price ? { price: bulkEditData.price } : {})
+      };
+      const res = await bulkUpdateProducts(payload);
+      showSuccessAlert(res.detail || "Productos actualizados con éxito");
+      setShowBulkEditModal(false);
+      setBulkEditData({ category: "", price: "" });
+      setSelectedProductIds([]);
+      loadData();
+    } catch (err) {
+      const msg = err.response?.data?.detail || "Error al actualizar productos seleccionados.";
+      showErrorAlert(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   const handleImageChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       setProdData({ ...prodData, image: e.target.files[0] });
@@ -394,13 +465,24 @@ export default function Inventario() {
                         return (
                           <div key={product.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow flex flex-col group relative">
                             <div className="h-48 bg-slate-100 relative overflow-hidden flex items-center justify-center">
+                              {/* Selection Checkbox */}
+                              {user.role === 'ADMIN' && (
+                                <div className="absolute top-3 left-3 z-10 bg-white/85 rounded-md p-1 backdrop-blur-sm border border-slate-200 shadow-sm">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={selectedProductIds.includes(product.id)} 
+                                    onChange={(e) => handleSelectProduct(product.id, e.target.checked)}
+                                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
+                                  />
+                                </div>
+                              )}
                               {product.image ? (
                                 <img src={product.image?.replace(/^https?:\/\/[^\/]+/, '')} alt={product.name} className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500 mix-blend-multiply" />
                               ) : (
                                 <span className="text-slate-300 font-bold text-lg px-6 text-center">{product.name}</span>
                               )}
                               {isLowStock && (
-                                <span className="absolute top-3 left-3 bg-red-500 text-white text-[10px] uppercase font-bold px-2 py-1 rounded shadow-sm">Bajo Stock</span>
+                                <span className={`absolute top-3 ${user.role === 'ADMIN' ? 'left-11' : 'left-3'} bg-red-500 text-white text-[10px] uppercase font-bold px-2 py-1 rounded shadow-sm`}>Bajo Stock</span>
                               )}
                             </div>
                             
@@ -433,6 +515,16 @@ export default function Inventario() {
                       <table className="w-full text-left text-sm text-slate-600">
                         <thead className="bg-slate-50 text-slate-400 uppercase text-xs font-bold border-b border-slate-100">
                           <tr>
+                            {user.role === 'ADMIN' && (
+                              <th className="px-6 py-4 w-12">
+                                <input 
+                                  type="checkbox" 
+                                  checked={filteredProducts.length > 0 && selectedProductIds.length === filteredProducts.length} 
+                                  onChange={(e) => handleSelectAll(e.target.checked)}
+                                  className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
+                                />
+                              </th>
+                            )}
                             <th className="px-6 py-4">Foto / SKU</th>
                             <th className="px-6 py-4">Producto</th>
                             <th className="px-6 py-4">Fin de Vida</th>
@@ -449,6 +541,16 @@ export default function Inventario() {
                             
                             return (
                               <tr key={product.id} className="hover:bg-slate-50 transition-colors">
+                                {user.role === 'ADMIN' && (
+                                  <td className="px-6 py-4 w-12">
+                                    <input 
+                                      type="checkbox" 
+                                      checked={selectedProductIds.includes(product.id)} 
+                                      onChange={(e) => handleSelectProduct(product.id, e.target.checked)}
+                                      className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
+                                    />
+                                  </td>
+                                )}
                                 <td className="px-6 py-4">
                                   <div className="flex items-center gap-3">
                                     {product.image ? (
@@ -484,6 +586,7 @@ export default function Inventario() {
                       </table>
                     </div>
                   )}
+
                 </div>
               )}
 
@@ -903,6 +1006,94 @@ export default function Inventario() {
         </div>
       )}
 
+      {/* BARRA DE ACCIONES MASIVAS */}
+      {user.role === 'ADMIN' && selectedProductIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-6 z-50 border border-slate-800 animate-in fade-in slide-in-from-bottom-4">
+          <span className="text-sm font-bold text-slate-300">
+            {selectedProductIds.length} seleccionado{selectedProductIds.length > 1 ? 's' : ''}
+          </span>
+          <div className="flex gap-3">
+            <button 
+              type="button"
+              onClick={() => setShowBulkEditModal(true)} 
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95"
+            >
+              Modificar Selección
+            </button>
+            <button 
+              type="button"
+              onClick={handleBulkDelete} 
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95"
+            >
+              Eliminar Selección
+            </button>
+            <button 
+              type="button"
+              onClick={() => setSelectedProductIds([])} 
+              className="text-slate-400 hover:text-white px-2 py-2 text-xs font-medium"
+            >
+              Despejar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDICIÓN MASIVA */}
+      {showBulkEditModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+          <div className="bg-white p-8 rounded-2xl w-full max-w-md shadow-2xl">
+            <h2 className="font-bold text-xl text-slate-800 mb-2">Editar Selección Masiva</h2>
+            <p className="text-xs text-slate-500 mb-6 font-medium">Modifica {selectedProductIds.length} productos seleccionados simultáneamente. Deja vacío el campo que no quieras cambiar.</p>
+            
+            <form onSubmit={handleBulkUpdateSubmit} className="flex flex-col gap-5">
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Nueva Categoría</label>
+                <select 
+                  value={bulkEditData.category} 
+                  onChange={e => setBulkEditData({ ...bulkEditData, category: e.target.value })} 
+                  className="w-full border border-slate-200 p-2.5 rounded-xl bg-slate-50 outline-none focus:border-blue-500 transition-colors font-semibold text-slate-700 cursor-pointer"
+                >
+                  <option value="">Mantener original / No cambiar</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Nuevo Precio Unitario Base</label>
+                <input 
+                  type="number" 
+                  step="0.01" 
+                  placeholder="Mantener original / No cambiar"
+                  value={bulkEditData.price} 
+                  onChange={e => setBulkEditData({ ...bulkEditData, price: e.target.value })} 
+                  className="w-full border border-slate-200 p-2.5 rounded-xl bg-slate-50 outline-none focus:border-blue-500 transition-colors text-sm font-medium" 
+                />
+              </div>
+              
+              <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100">
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setShowBulkEditModal(false);
+                    setBulkEditData({ category: "", price: "" });
+                  }} 
+                  className="px-5 py-2.5 text-slate-600 font-semibold hover:bg-slate-100 rounded-xl transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors shadow-sm"
+                >
+                  Aplicar Cambios
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
+

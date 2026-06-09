@@ -329,6 +329,83 @@ class ProductViewSet(BaseInventoryViewSet):
             instance.save()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=False, methods=['post'], url_path='bulk_delete')
+    def bulk_delete(self, request):
+        ids = request.data.get('ids', [])
+        if not ids:
+            return Response({"detail": "No se proporcionaron IDs para eliminar."}, status=400)
+        
+        from django.db.models import ProtectedError
+        deleted_count = 0
+        deactivated_count = 0
+        
+        for p_id in ids:
+            try:
+                product = Product.objects.get(id=p_id)
+                # Check permissions
+                if not request.user.is_superuser and product.company != request.user.company:
+                    continue
+                try:
+                    product.delete()
+                    deleted_count += 1
+                except ProtectedError:
+                    product.is_active = False
+                    product.save()
+                    deactivated_count += 1
+            except Product.DoesNotExist:
+                continue
+                
+        return Response({
+            "detail": f"Eliminación masiva completada. {deleted_count} eliminados permanentemente, {deactivated_count} desactivados logicamente por dependencias."
+        })
+
+    @action(detail=False, methods=['post'], url_path='bulk_update')
+    def bulk_update(self, request):
+        ids = request.data.get('ids', [])
+        if not ids:
+            return Response({"detail": "No se proporcionaron IDs para actualizar."}, status=400)
+            
+        category_id = request.data.get('category')
+        price = request.data.get('price')
+        
+        if category_id is None and price is None:
+            return Response({"detail": "Debes especificar al menos un campo para actualizar (Categoría o Precio)."}, status=400)
+            
+        company = request.user.company
+        
+        # Validate Category if provided
+        category = None
+        if category_id:
+            try:
+                category = Category.objects.get(id=category_id)
+                if not request.user.is_superuser and category.company != company:
+                    return Response({"detail": "La categoría no pertenece a tu empresa."}, status=400)
+            except Category.DoesNotExist:
+                return Response({"detail": "La categoría especificada no existe."}, status=400)
+                
+        updated_count = 0
+        for p_id in ids:
+            try:
+                product = Product.objects.get(id=p_id)
+                # Check permissions
+                if not request.user.is_superuser and product.company != company:
+                    continue
+                
+                if category:
+                    product.category = category
+                if price is not None:
+                    product.price = price
+                    
+                product.save()
+                updated_count += 1
+            except Product.DoesNotExist:
+                continue
+                
+        return Response({
+            "detail": f"Se actualizaron {updated_count} productos exitosamente."
+        })
+
+
 class InventoryViewSet(BaseInventoryViewSet):
     queryset = Inventory.objects.select_related('product', 'warehouse', 'warehouse__branch').all()
     serializer_class = InventorySerializer
